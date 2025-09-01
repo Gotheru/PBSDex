@@ -1,215 +1,275 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import argparse, json, re, sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, List, Any, Tuple, Optional
 
-# ---------- helpers ----------
-def parse_list_csv(s: str) -> List[str]:
-    return [x.strip() for x in s.split(",") if x.strip()]
+# -------- helpers --------
 
-def parse_moves(s: str) -> List[Dict[str, Any]]:
-    items = parse_list_csv(s)
-    out = []
-    i = 0
-    while i < len(items):
-        try:
-            lvl = int(items[i])
-            move = items[i+1] if i+1 < len(items) else None
-            if move:
-                out.append({"level": lvl, "move": move})
-            i += 2
-        except ValueError:
-            out.append({"level": 0, "move": items[i]})
-            i += 1
+def parse_stat_order(order_str: str) -> List[str]:
+    raw = [s.strip().lower() for s in order_str.split(",")]
+    alias = {"spatk":"spa","spat":"spa","sp.a":"spa",
+             "spdef":"spd","spdf":"spd","sp.d":"spd",
+             "speed":"spe"}
+    out = [alias.get(k, k) for k in raw]
+    if len(out) != 6 or any(k not in {"hp","atk","def","spa","spd","spe"} for k in out):
+        raise ValueError("stat-order must be 6 keys from: hp, atk, def, spa, spd, spe")
     return out
 
-def parse_evolutions(s: str) -> List[Dict[str, Any]]:
-    items = parse_list_csv(s)
-    out = []
-    for i in range(0, len(items), 3):
-        chunk = items[i:i+3]
-        if len(chunk) == 3:
-            to, method, param = chunk
-            try:
-                param_val = int(param)
-            except ValueError:
-                param_val = param
-            out.append({"to": to, "method": method, "param": param_val})
+def to_list(v):
+    if v is None: return []
+    if isinstance(v, list): return [str(x).strip() for x in v if str(x).strip()]
+    return [s.strip() for s in str(v).split(",") if s.strip()]
+
+def dedupe_keep_order(seq: List[str]) -> List[str]:
+    seen=set(); out=[]
+    for x in seq:
+        if x not in seen:
+            seen.add(x); out.append(x)
     return out
 
-def map_stats(nums: List[int], order: str) -> Dict[str, int]:
-    keys = [k.strip().lower() for k in order.split(",")]
-    if len(nums) != 6 or len(keys) != 6:
-        return {}
-    return dict(zip(keys, nums))
+def title_from_internal(name: str) -> str: return str(name).replace("_"," ").title()
+def slug(s: str) -> str: return re.sub(r"(^-+|-+$)","", re.sub(r"[^a-z0-9]+","-", s.lower()))
+def parse_kv_line(line: str):
+    if "=" not in line: return None, None
+    k,v=line.split("=",1); return k.strip(), v.strip()
 
-def parse_stats(s: str, order: str) -> Dict[str, int]:
-    nums = [int(x.strip()) for x in s.split(",") if x.strip()]
-    return map_stats(nums, order)
+def parse_section_header(line: str):
+    # [INTERNAL] or [INTERNAL,NUMBER] or just [1]
+    m = re.match(r"\s*\[([A-Za-z0-9_]+)(?:\s*,\s*(\d+))?\]\s*$", line)
+    if not m: return None, None
+    internal = m.group(1)
+    idx = int(m.group(2)) if m.group(2) is not None else None
+    return internal, idx
 
-def parse_evs(s: str, order: str) -> Dict[str, int]:
-    nums = [int(x.strip()) for x in s.split(",") if x.strip()]
-    return map_stats(nums, order)
+def contains_base(form_name: str, base_disp: str) -> bool:
+    return base_disp.lower() in (form_name or "").lower()
 
-def slugify(s: str) -> str:
-    s = s.lower()
-    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-    return s or "unknown"
+def is_cosmetic_form(base_internal: str, form_name: str) -> bool:
+    b = (base_internal or "").upper()
+    name = form_name or ""
+    if b == "UNOWN": return True
+    if b == "PIKACHU" and (re.search(r"\bcap\b", name, re.I) or re.search(r"cosplay", name, re.I)):
+        return True
+    return False
 
-def norm_empty(x: str) -> str:
-    return x.strip()
+# -------- parsers --------
 
-def is_blank_or_none(x: str | None) -> bool:
-    return not x or x.upper() in {"", "NONE", "NULL"}
-
-def finalize_entry(cur: Dict[str, Any]) -> Dict[str, Any]:
-    # Build types from _type1/_type2
-    t1 = cur.pop("_type1", None)
-    t2 = cur.pop("_type2", None)
-    types = []
-    if not is_blank_or_none(t1):
-        types.append(t1)
-    if not is_blank_or_none(t2) and (not types or t2 != types[0]):
-        types.append(t2)
-    if types:
-        cur["types"] = types
-
-    # Ensure id
-    internal = cur.get("internalName") or cur.get("InternalName")
-    name = cur.get("name")
-    if internal:
-        cur["id"] = slugify(internal)
-    elif name:
-        cur["id"] = slugify(name)
-    else:
-        cur["id"] = f"pokemon-{cur.get('index','unknown')}"
-
-    return cur
-
-# ---------- main parser ----------
-def parse_pbs(src: Path, stat_order: str) -> Dict[str, Any]:
+def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Parse pokemon.txt (bases). Key by true InternalName (not the header)."""
     entries: List[Dict[str, Any]] = []
-    current: Dict[str, Any] = {}
-    idx = None
+    cur: Optional[Dict[str, Any]] = None
 
-    with src.open("r", encoding="utf-8", errors="ignore") as f:
+    with path.open("r", encoding="utf-8", errors="ignore") as f:
         for raw in f:
             line = raw.strip()
-            if not line or line.startswith("#"):
+            if not line or line.startswith("#"): continue
+
+            if line.startswith("["):
+                if cur:
+                    # finalize previous section
+                    tb = cur.pop("_typebuf", {})
+                    types = []
+                    t1 = tb.get("Type1"); t2 = tb.get("Type2")
+                    if t1: types.append(t1)
+                    if t2 and (not types or t2 != types[0]): types.append(t2)
+                    cur["types"] = [t for t in types if t]
+                    entries.append(cur)
+                header, _ = parse_section_header(line)
+                cur = {"_header": header}
                 continue
 
-            m = re.match(r"^\[(\d+)\]$", line)
-            if m:
-                if current:
-                    entries.append(finalize_entry(current))
-                    current = {}
-                idx = int(m.group(1))
-                current["index"] = idx
-                continue
+            if cur is None: continue
+            k, v = parse_kv_line(line)
+            if not k: continue
+            lk = k.lower()
 
-            if "=" not in line:
-                continue
+            if lk == "internalname":
+                cur["internalName"] = v
+            elif lk == "name":
+                cur["name"] = v
+            elif lk in ("type","types","type1","type2"):
+                cur.setdefault("_typebuf", {})
+                if lk in ("type","types"):
+                    ts = to_list(v)
+                    if ts:
+                        cur["_typebuf"]["Type1"] = ts[0]
+                        if len(ts) > 1: cur["_typebuf"]["Type2"] = ts[1]
+                elif lk == "type1": cur["_typebuf"]["Type1"] = v
+                else:               cur["_typebuf"]["Type2"] = v
+            elif lk in ("basestats","base_stats"):
+                nums = [n.strip() for n in v.split(",")]
+                if len(nums) == 6:
+                    cur["stats"] = {stat_order[i]: int(nums[i]) if nums[i].isdigit() else 0 for i in range(6)}
+            elif lk == "abilities":
+                cur["abilities"] = to_list(v)
+            elif lk in ("hiddenability","hidden_ability"):
+                hv = v.strip()
+                if hv and hv.upper() not in {"", "NONE"}: cur["hiddenAbility"] = hv
+            elif lk in ("pokedex","summary","kind"):
+                cur["summary"] = v
 
-            key, val = line.split("=", 1)
-            key = key.strip()
-            val = re.sub(r"\s*,\s*", ",", val.strip())
-            k = key.lower()
+    if cur:
+        tb = cur.pop("_typebuf", {})
+        types=[]; t1 = tb.get("Type1"); t2 = tb.get("Type2")
+        if t1: types.append(t1)
+        if t2 and (not types or t2 != types[0]): types.append(t2)
+        cur["types"] = [t for t in types if t]
+        entries.append(cur)
 
-            if k == "name":
-                current["name"] = val
-            elif k == "internalname":
-                current["internalName"] = val
-            elif k in ("type1", "type"):
-                # some packs use "Type" or "Types"
-                parts = parse_list_csv(val) if k == "type" else [val]
-                current["_type1"] = parts[0] if parts else val
-                if len(parts) > 1:
-                    current["_type2"] = parts[1]
-            elif k == "type2":
-                current["_type2"] = val
-            elif k == "basestats":
-                current["stats"] = parse_stats(val, stat_order)
-            elif k == "effortpoints":
-                current["evYield"] = parse_evs(val, stat_order)
-            elif k == "abilities":
-                current["abilities"] = parse_list_csv(val)
-            elif k == "hiddenability":
-                current["hiddenAbility"] = val
-            elif k == "moves":
-                current["moves"] = parse_moves(val)
-            elif k == "tutormoves":
-                seen = set(); lst = []
-                for mv in parse_list_csv(val):
-                    if mv not in seen:
-                        seen.add(mv); lst.append(mv)
-                current["tutorMoves"] = lst
-            elif k == "eggmoves":
-                current["eggMoves"] = parse_list_csv(val)
-            elif k == "compatibility":
-                current["compatibility"] = parse_list_csv(val)
-            elif k == "stepstohatch":
-                current["stepsToHatch"] = int(val) if val.isdigit() else val
-            elif k == "height":
-                try: current["height"] = float(val)
-                except: current["height"] = val
-            elif k == "weight":
-                try: current["weight"] = float(val)
-                except: current["weight"] = val
-            elif k == "color":
-                current["color"] = val
-            elif k == "shape":
-                current["shape"] = val
-            elif k == "habitat":
-                current["habitat"] = val
-            elif k == "kind":
-                current["kind"] = val
-            elif k == "pokedex":
-                current["pokedex"] = val
-            elif k == "generation":
-                try: current["generation"] = int(val)
-                except: current["generation"] = val
-            elif k == "evolutions":
-                current["evolutions"] = parse_evolutions(val)
-            elif k == "basexp":
-                current["baseExp"] = int(val) if val.isdigit() else val
-            elif k == "rareness":
-                current["rareness"] = int(val) if val.isdigit() else val
-            elif k == "happiness":
-                current["happiness"] = int(val) if val.isdigit() else val
-            elif k == "growthrate":
-                current["growthRate"] = val
-            elif k == "genderrate":
-                current["genderRate"] = val
-            else:
-                current.setdefault("extra", {})[key] = val
-
-    if current:
-        entries.append(finalize_entry(current))
-
-    # Clean out any accidental empties in types
+    # Re-key by true InternalName (fallback to header if missing)
+    result: Dict[str, Dict[str, Any]] = {}
     for e in entries:
-        if "types" in e:
-            e["types"] = [t for t in e["types"] if not is_blank_or_none(t)]
+        internal = e.get("internalName") or e.get("_header")
+        if not internal: continue
+        e["internalName"] = internal
+        if "name" not in e: e["name"] = title_from_internal(internal)
+        if "stats" not in e: e["stats"] = {"hp":0,"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+        e["abilities"] = dedupe_keep_order(to_list(e.get("abilities")))
+        if e.get("hiddenAbility","").upper() in {"", "NONE"}: e.pop("hiddenAbility", None)
+        result[internal] = e
 
-    return {"pokemon": entries}
+    return result
+
+def parse_forms_pbs(path: Path, stat_order: List[str]) -> List[Dict[str, Any]]:
+    """Parse pokemon_forms.txt (forms)."""
+    forms: List[Dict[str, Any]] = []
+    cur: Optional[Dict[str, Any]] = None
+
+    with path.open("r", encoding="utf-8", errors="ignore") as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#"): continue
+
+            if line.startswith("[" ):
+                if cur: forms.append(cur)
+                base, idx = parse_section_header(line)
+                cur = {"baseInternal": base, "formIndex": idx, "overrides": {}}
+                continue
+
+            if cur is None: continue
+            k, v = parse_kv_line(line)
+            if not k: continue
+            lk = k.lower(); ov = cur["overrides"]
+
+            if lk == "formname":
+                ov["formName"] = v
+            elif lk in ("type","types","type1","type2"):
+                ov.setdefault("_typebuf", {})
+                if lk in ("types","type"):
+                    ts = to_list(v)
+                    if ts:
+                        ov["_typebuf"]["Type1"] = ts[0]
+                        if len(ts) > 1: ov["_typebuf"]["Type2"] = ts[1]
+                elif lk == "type1": ov["_typebuf"]["Type1"] = v
+                else:               ov["_typebuf"]["Type2"] = v
+            elif lk in ("basestats","base_stats"):
+                nums = [n.strip() for n in v.split(",")]
+                if len(nums) == 6:
+                    ov["stats"] = {stat_order[i]: int(nums[i]) if nums[i].isdigit() else 0 for i in range(6)}
+            elif lk == "abilities":
+                ov["abilities"] = dedupe_keep_order(to_list(v))
+            elif lk in ("hiddenability","hidden_ability"):
+                hv = v.strip()
+                if hv and hv.upper() not in {"", "NONE"}: ov["hiddenAbility"] = hv
+            elif lk in ("pokedex","summary","kind"):
+                ov["summary"] = v
+
+    if cur: forms.append(cur)
+
+    # finalize types for overrides
+    for fobj in forms:
+        ov = fobj["overrides"]
+        tb = ov.pop("_typebuf", {})
+        types=[]; t1 = tb.get("Type1"); t2 = tb.get("Type2")
+        if t1: types.append(t1)
+        if t2 and (not types or t2 != types[0]): types.append(t2)
+        if types: ov["types"] = [t for t in types if t]
+
+    return forms
+
+def merge_forms(base_by_internal: Dict[str, Dict[str, Any]], forms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+
+    # base species
+    for internal, sp in base_by_internal.items():
+        mon = {
+            "id": slug(internal),
+            "internalName": internal,
+            "name": sp.get("name", title_from_internal(internal)),
+            "types": sp.get("types", []),
+            "stats": sp.get("stats", {"hp":0,"atk":0,"def":0,"spa":0,"spd":0,"spe":0}),
+            "abilities": dedupe_keep_order(to_list(sp.get("abilities"))),
+        }
+        if sp.get("hiddenAbility"): mon["hiddenAbility"] = sp["hiddenAbility"]
+        if sp.get("summary"): mon["summary"] = sp["summary"]
+        out.append(mon)
+
+    # forms
+    for f in forms:
+        base = base_by_internal.get(f["baseInternal"])
+        if not base:
+            continue  # unknown base -> skip gracefully
+
+        ov = f["overrides"]
+        form_name = ov.get("formName") or f"Form {f.get('formIndex', 0)}"
+
+        # skip cosmetics
+        if is_cosmetic_form(base["internalName"], form_name):
+            continue
+
+        base_disp = base.get("name", title_from_internal(base["internalName"]))
+        display = form_name if contains_base(form_name, base_disp) else f"{base_disp} ({form_name})"
+
+        base_internal = base["internalName"]
+        idx = f.get("formIndex")
+        internal_form = f"{base_internal}_{idx}" if idx is not None else f"{base_internal}_{slug(form_name) or 'form'}"
+
+        mon = {
+            "id": slug(internal_form),
+            "internalName": internal_form,                # BASENAME_NUMBER
+            "name": display,                              # display rule
+            "types": ov.get("types", base.get("types", [])),
+            "stats": ov.get("stats", base.get("stats", {"hp":0,"atk":0,"def":0,"spa":0,"spd":0,"spe":0})),
+            "abilities": dedupe_keep_order(ov.get("abilities", base.get("abilities", []))),
+        }
+        ha = ov.get("hiddenAbility", base.get("hiddenAbility"))
+        if ha: mon["hiddenAbility"] = ha
+        summ = ov.get("summary", base.get("summary"))
+        if summ: mon["summary"] = summ
+
+        out.append(mon)
+
+    return out
+
+# -------- main --------
 
 def main():
-    ap = argparse.ArgumentParser(description="Convert Pokémon PBS (pokemon.txt) to JSON for the site.")
-    ap.add_argument("src", type=Path, help="Path to PBS file (pokemon.txt)")
-    ap.add_argument("out", type=Path, help="Output JSON path (e.g., public/data/pokemon.json)")
+    ap = argparse.ArgumentParser(description="Convert PBS pokemon + forms to a single JSON for PBSDex.")
+    ap.add_argument("src", help="Path to pokemon.txt")
+    ap.add_argument("dest", help="Path to output pokemon.json")
+    ap.add_argument("--forms", help="Path to pokemon_forms.txt", default=None)
     ap.add_argument("--stat-order", default="hp,atk,def,spe,spd,spa",
-                    help="Order for BaseStats/EffortPoints (default: hp,atk,def,spe,spd,spa)")
+                    help="Order of BaseStats (default: hp,atk,def,spe,spd,spa)")
     args = ap.parse_args()
 
-    if not args.src.exists():
-        print(f"ERROR: Input file not found: {args.src}\n"
-              f"Tip: put the PBS at data/pokemon.txt or pass the full path.", file=sys.stderr)
+    src = Path(args.src)
+    forms_path = Path(args.forms) if args.forms else None
+    dest = Path(args.dest)
+    if not src.exists():
+        print(f"ERROR: Input file not found: {src}", file=sys.stderr)
         sys.exit(1)
 
-    result = parse_pbs(args.src, args.stat_order)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"✔ Wrote {args.out} with {len(result.get('pokemon', []))} entries")
+    stat_order = parse_stat_order(args.stat_order)
+
+    base = parse_pokemon_pbs(src, stat_order)
+    forms = parse_forms_pbs(forms_path, stat_order) if (forms_path and forms_path.exists()) else []
+    combined = merge_forms(base, forms)
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(combined, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Wrote {len(combined)} entries to {dest}")
 
 if __name__ == "__main__":
     main()
