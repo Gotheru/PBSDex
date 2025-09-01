@@ -53,28 +53,63 @@ const BASE =  import.meta.env.BASE_URL;
 	Built with Astro on GitHub Pages.
 </footer>
 
-<script>
+<script type="module">
+	// Base-aware fetch (works in dev and on GitHub Pages /PBSDex/)
+	const BASE = import.meta.env.BASE_URL;                // '/PBSDex/' in prod
+	const dataUrl = `${BASE}data/pokemon.json`;
+
 	const $ = sel => document.querySelector(sel);
 	const grid = $('#grid'), q = $('#q'), typeSel = $('#type'), sortSel = $('#sort'), count = $('#count');
 
-	// The BASE placeholder below is injected at build-time by Astro:
-	const BASE = import.meta.env.BASE_URL;      // '/PBSDex/' in dev & prod for your project
-	const dataUrl = `${BASE}data/pokemon.json`;       // -> '/PBSDex/data/pokemon.json'
+	// --- normalizers to tolerate schema changes ---
+	const toArray = (x) => Array.isArray(x) ? x : (typeof x === 'string' ? x.split(',').map(s=>s.trim()).filter(Boolean) : []);
+	const num = (x, d=0) => {
+		const n = typeof x === 'number' ? x : parseInt(x, 10);
+		return Number.isFinite(n) ? n : d;
+	};
+	const slugify = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+	function normalizeEntry(e, idx) {
+		const name = e.name ?? e.InternalName ?? e.internalName ?? `Pokemon ${idx+1}`;
+		const id = e.id ?? (e.internalName ? slugify(e.internalName) : slugify(name) || `pokemon-${idx+1}`);
+
+		// types may be missing or empty
+		let types = Array.isArray(e.types) ? e.types.filter(Boolean) : [];
+		// some datasets put single "type" or "Type" as a string
+		if (!types.length && (e.type || e.Type)) types = toArray(e.type || e.Type);
+
+		// stats may be missing or partial
+		const s = e.stats || {};
+		const stats = {
+			hp:  num(s.hp),
+			atk: num(s.atk),
+			def: num(s.def),
+			spa: num(s.spa),
+			spd: num(s.spd),
+			spe: num(s.spe),
+		};
+
+		// abilities may come as CSV, array, or be missing
+		const abilities = toArray(e.abilities);
+		// keep hiddenAbility separate if you want; or append it
+		// if (e.hiddenAbility) abilities.push(e.hiddenAbility);
+
+		// a small description from your PBS fields if present
+		const summary = e.summary ?? e.pokedex ?? e.kind ?? '';
+
+		// keep moves if you need them later; UI doesn’t require them
+		const moves = Array.isArray(e.moves) ? e.moves : [];
+
+		return { id, name, types, stats, abilities, summary, moves };
+	}
 
 	async function loadData() {
-		try {
-			const res = await fetch(dataUrl, { cache: "no-cache" });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			return await res.json();
-		} catch (err) {
-			console.error("Failed to load data:", err);
-			const warn = document.createElement('div');
-			warn.style.color = '#b00020';
-			warn.style.margin = '12px 0';
-			warn.textContent = 'Failed to load data. Check public/data/pokemon.json and your deployment.';
-			document.querySelector('main').prepend(warn);
-			return { pokemon: [] };
-		}
+		const res = await fetch(dataUrl, { cache: 'no-cache' });
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const data = await res.json();
+		// accept either { pokemon: [...] } or plain array
+		const raw = Array.isArray(data) ? data : (data.pokemon || []);
+		return raw.map(normalizeEntry);
 	}
 
 	function bst(s) { return s.hp+s.atk+s.def+s.spa+s.spd+s.spe; }
@@ -85,10 +120,8 @@ const BASE =  import.meta.env.BASE_URL;
 
 		let list = POKEMON.filter(p => {
 			const inType = !type || p.types.includes(type);
-			const inQuery = !query ||
-				p.name.toLowerCase().includes(query) ||
-				p.types.join(' ').toLowerCase().includes(query) ||
-				p.abilities.join(' ').toLowerCase().includes(query);
+			const text = (p.name + " " + p.types.join(" ") + " " + p.abilities.join(" ")).toLowerCase();
+			const inQuery = !query || text.includes(query);
 			return inType && inQuery;
 		});
 
@@ -97,51 +130,59 @@ const BASE =  import.meta.env.BASE_URL;
 
 		count.textContent = `${list.length} result${list.length===1?'':'s'}`;
 		grid.innerHTML = '';
+
 		for (const p of list) {
 			const card = document.createElement('article');
 			card.className = 'card';
 			card.innerHTML = `
-          <div class="title">
-            <div class="name">${p.name}</div>
-            <div class="bst">BST ${bst(p.stats)}</div>
-          </div>
-          <div class="types">${p.types.map(t=>`<span class="type">${t}</span>`).join('')}</div>
-          <div class="statrow">
-            <div class="stat">HP ${p.stats.hp}</div>
-            <div class="stat">Atk ${p.stats.atk}</div>
-            <div class="stat">Def ${p.stats.def}</div>
-            <div class="stat">SpA ${p.stats.spa}</div>
-            <div class="stat">SpD ${p.stats.spd}</div>
-            <div class="stat">Spe ${p.stats.spe}</div>
-          </div>
-          <div class="abilities"><strong>Abilities:</strong> ${p.abilities.join(', ')}</div>
-          <div style="font-size:12px; opacity:.8;">${p.summary ?? ''}</div>
-        `;
+        <div class="title">
+          <div class="name">${p.name}</div>
+          <div class="bst">BST ${bst(p.stats)}</div>
+        </div>
+        <div class="types">${p.types.map(t=>`<span class="type">${t}</span>`).join('')}</div>
+        <div class="statrow">
+          <div class="stat">HP ${p.stats.hp}</div>
+          <div class="stat">Atk ${p.stats.atk}</div>
+          <div class="stat">Def ${p.stats.def}</div>
+          <div class="stat">SpA ${p.stats.spa}</div>
+          <div class="stat">SpD ${p.stats.spd}</div>
+          <div class="stat">Spe ${p.stats.spe}</div>
+        </div>
+        <div class="abilities"><strong>Abilities:</strong> ${p.abilities.join(', ')}</div>
+        <div style="font-size:12px; opacity:.8;">${p.summary ?? ''}</div>
+      `;
 			grid.appendChild(card);
 		}
 	}
 
 	(async () => {
-		const data = await loadData();
-		const POKEMON = Array.isArray(data) ? data : (data.pokemon || []);
+		try {
+			const POKEMON = await loadData();
 
-		// Populate the type dropdown once
-		const typeSet = new Set();
-		POKEMON.forEach(p => p.types.forEach(t => typeSet.add(t)));
-		[...typeSet].sort().forEach(t => {
-			const opt = document.createElement('option');
-			opt.value = t; opt.textContent = t; typeSel.appendChild(opt);
-		});
+			// rebuild type dropdown safely
+			const typeSet = new Set();
+			POKEMON.forEach(p => p.types.forEach(t => typeSet.add(t)));
+			typeSel.innerHTML = '<option value="">All types</option>';
+			[...typeSet].sort().forEach(t => {
+				const opt = document.createElement('option');
+				opt.value = t; opt.textContent = t; typeSel.appendChild(opt);
+			});
 
-		// Wire up events
-		const rerender = () => render(POKEMON);
-		q.addEventListener('input', rerender);
-		typeSel.addEventListener('change', rerender);
-		sortSel.addEventListener('change', rerender);
-
-		// First render
-		render(POKEMON);
+			const rerender = () => render(POKEMON);
+			q.addEventListener('input', rerender);
+			typeSel.addEventListener('change', rerender);
+			sortSel.addEventListener('change', rerender);
+			render(POKEMON);
+		} catch (err) {
+			console.error('Failed to load data', err);
+			const warn = document.createElement('div');
+			warn.style.color = '#b00020';
+			warn.style.margin = '12px 0';
+			warn.textContent = 'Failed to load data. Open the console for details.';
+			document.querySelector('main').prepend(warn);
+		}
 	})();
 </script>
+
 </body>
 </html>
