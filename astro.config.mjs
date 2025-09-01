@@ -1,6 +1,6 @@
 import { defineConfig } from 'astro/config';
 export default defineConfig({
-    site: 'https://YOUR-USERNAME.github.io/REPO-NAME/',
-    base: '/REPO-NAME/',
+    site: 'https://gotheru.github.io/PBSDex/',
+    base: '/PBSDex/',
     outDir: 'dist',
 });

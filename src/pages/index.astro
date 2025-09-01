@@ -1,11 +1,142 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+/* No frontmatter needed for this page */
 ---
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>My Dex</title>
+	<style>
+		:root { --gap: 12px; --radius: 14px; --shadow: 0 6px 20px rgba(0,0,0,.08); }
+		body { font-family: system-ui, sans-serif; margin: 0; color: #111; background: #fafafa; }
+		header { position: sticky; top: 0; background: #fff; padding: 12px; box-shadow: 0 1px 0 rgba(0,0,0,.08); z-index: 10; }
+		.wrap { max-width: 1100px; margin: 0 auto; padding: 12px; }
+		.controls { display: grid; grid-template-columns: 1fr 220px 160px; gap: var(--gap); }
+		input, select { padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
+		.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: var(--gap); margin-top: 16px; }
+		.card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+		.title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+		.name { font-weight: 700; }
+		.bst { font-size: 12px; opacity: .7 }
+		.types { display: flex; flex-wrap: wrap; gap: 6px; }
+		.type { font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid #eee; background: #f5f5f5; }
+		.abilities { font-size: 12px; opacity: .9; }
+		.statrow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+		.stat { font-size: 11px; padding: 4px; background: #f6f8ff; border-radius: 6px; text-align: center; }
+		footer { padding: 40px 0; color: #666; text-align: center; }
+		@media (max-width: 720px) { .controls { grid-template-columns: 1fr 1fr; } }
+	</style>
+</head>
+<body>
+<header>
+	<div class="wrap">
+		<div class="controls">
+			<input id="q" placeholder="Search name, type, ability…" />
+			<select id="type">
+				<option value="">All types</option>
+			</select>
+			<select id="sort">
+				<option value="name">Sort: Name (A–Z)</option>
+				<option value="bst">Sort: Total stats (desc)</option>
+			</select>
+		</div>
+	</div>
+</header>
 
-<Layout>
-	<Welcome />
-</Layout>
+<main class="wrap">
+	<div id="count" style="margin:10px 2px; font-size:13px; opacity:.7;"></div>
+	<div id="grid" class="grid"></div>
+</main>
+
+<footer>
+	Built with Astro on GitHub Pages.
+</footer>
+
+<script id="dex-data" type="application/json">
+	{
+		"pokemon": [
+			{
+				"id": "sparkuin",
+				"name": "Sparkuin",
+				"types": ["Ice","Electric"],
+				"stats": {"hp":70,"atk":65,"def":80,"spa":95,"spd":85,"spe":95},
+				"abilities": ["Static Slipstream","Snow Cloak"],
+				"summary": "Glides on frozen waves while charging the air."
+			},
+			{
+				"id": "pyrox",
+				"name": "Pyrox",
+				"types": ["Fire","Rock"],
+				"stats": {"hp":80,"atk":100,"def":90,"spa":70,"spd":70,"spe":60},
+				"abilities": ["Flame Armor","Pressure"],
+				"summary": "Its molten core hardens into armor mid-battle."
+			}
+		]
+	}
+</script>
+
+<script>
+	const $ = sel => document.querySelector(sel);
+	const grid = $('#grid'), q = $('#q'), typeSel = $('#type'), sortSel = $('#sort'), count = $('#count');
+	const data = JSON.parse(document.getElementById('dex-data').textContent);
+	let POKEMON = data.pokemon;
+
+	const typeSet = new Set();
+	POKEMON.forEach(p => p.types.forEach(t => typeSet.add(t)));
+	[...typeSet].sort().forEach(t => {
+		const opt = document.createElement('option');
+		opt.value = t; opt.textContent = t; typeSel.appendChild(opt);
+	});
+
+	function bst(s) { return s.hp+s.atk+s.def+s.spa+s.spd+s.spe; }
+
+	function render() {
+		const query = q.value.trim().toLowerCase();
+		const type = typeSel.value;
+
+		let list = POKEMON.filter(p => {
+			const inType = !type || p.types.includes(type);
+			const inQuery = !query ||
+				p.name.toLowerCase().includes(query) ||
+				p.types.join(' ').toLowerCase().includes(query) ||
+				p.abilities.join(' ').toLowerCase().includes(query);
+			return inType && inQuery;
+		});
+
+		if (sortSel.value === 'name') list.sort((a,b) => a.name.localeCompare(b.name));
+		else if (sortSel.value === 'bst') list.sort((a,b) => bst(b.stats) - bst(a.stats));
+
+		count.textContent = `${list.length} result${list.length===1?'':'s'}`;
+		grid.innerHTML = '';
+		for (const p of list) {
+			const card = document.createElement('article');
+			card.className = 'card';
+			card.innerHTML = `
+          <div class="title">
+            <div class="name">${p.name}</div>
+            <div class="bst">BST ${bst(p.stats)}</div>
+          </div>
+          <div class="types">${p.types.map(t=>`<span class="type">${t}</span>`).join('')}</div>
+          <div class="statrow">
+            <div class="stat">HP ${p.stats.hp}</div>
+            <div class="stat">Atk ${p.stats.atk}</div>
+            <div class="stat">Def ${p.stats.def}</div>
+            <div class="stat">SpA ${p.stats.spa}</div>
+            <div class="stat">SpD ${p.stats.spd}</div>
+            <div class="stat">Spe ${p.stats.spe}</div>
+          </div>
+          <div class="abilities"><strong>Abilities:</strong> ${p.abilities.join(', ')}</div>
+          <div style="font-size:12px; opacity:.8;">${p.summary ?? ''}</div>
+        `;
+			grid.appendChild(card);
+		}
+	}
+
+	q.addEventListener('input', render);
+	typeSel.addEventListener('change', render);
+	sortSel.addEventListener('change', render);
+	render();
+</script>
+</body>
+</html>
