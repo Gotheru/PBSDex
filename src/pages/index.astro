@@ -1,12 +1,14 @@
 ---
-const BASE =  import.meta.env.BASE_URL;
+import mainUrl from '../scripts/main.ts?url';
 ---
 <!doctype html>
 <html lang="en">
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>My Dex</title>
+	<title>PBSDex</title>
+
+	<!-- Scoped styles for header/controls/layout -->
 	<style>
 		:root { --gap: 12px; --radius: 14px; --shadow: 0 6px 20px rgba(0,0,0,.08); }
 		body { font-family: system-ui, sans-serif; margin: 0; color: #111; background: #fafafa; }
@@ -14,18 +16,83 @@ const BASE =  import.meta.env.BASE_URL;
 		.wrap { max-width: 1100px; margin: 0 auto; padding: 12px; }
 		.controls { display: grid; grid-template-columns: 1fr 220px 160px; gap: var(--gap); }
 		input, select { padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
-		.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: var(--gap); margin-top: 16px; }
-		.card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-		.title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-		.name { font-weight: 700; }
-		.bst { font-size: 12px; opacity: .7 }
-		.types { display: flex; flex-wrap: wrap; gap: 6px; }
-		.type { font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid #eee; background: #f5f5f5; }
-		.abilities { font-size: 12px; opacity: .9; }
-		.statrow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-		.stat { font-size: 11px; padding: 4px; background: #f6f8ff; border-radius: 6px; text-align: center; }
 		footer { padding: 40px 0; color: #666; text-align: center; }
 		@media (max-width: 720px) { .controls { grid-template-columns: 1fr 1fr; } }
+
+		/* container for the table */
+		#grid {
+			display: block;
+			overflow: auto;
+			max-height: 75vh;
+			margin-top: 16px;
+		}
+	</style>
+
+	<!-- GLOBAL styles for table injected by JS -->
+	<style is:global>
+		.dex-table {
+			width: 100%;
+			border-collapse: collapse;
+			table-layout: fixed;
+			background: #fff;
+			border-radius: 14px;
+			overflow: hidden;
+			box-shadow: 0 6px 20px rgba(0,0,0,.06);
+
+			--col-name: 220px;
+			--col-type: 110px;
+			--col-ability: 180px;
+			--col-hidden: 200px;
+			--col-bst: 80px;
+			--col-stat: 72px;
+		}
+
+		/* cells */
+		.dex-table th,
+		.dex-table td {
+			padding: 10px 8px;              /* ↓ was 10px 12px */
+			border-bottom: 1px solid #e5e7eb;
+			text-align: left !important;
+			font-size: 14px;
+			white-space: nowrap;
+			overflow: hidden;               /* NEW: clip long text */
+			text-overflow: ellipsis;        /* NEW: show … when clipped */
+			font-variant-numeric: tabular-nums;
+		}
+
+		.dex-table thead th {
+			position: sticky;
+			top: 0;
+			background: #f3f4f6;
+			font-weight: 700;
+			z-index: 1;
+		}
+
+		.dex-table tbody tr:nth-child(odd) { background: #fafafa; }
+		.dex-table tbody tr:nth-child(even) { background: #ffffff; }
+		.dex-table tbody tr:hover {
+			background: #ffeec2;
+			transition: background 120ms ease-in-out;
+		}
+
+		/* fixed widths */
+		.dex-table th:nth-child(1), .dex-table td:nth-child(1) { width: var(--col-name); }
+		.dex-table th:nth-child(2), .dex-table td:nth-child(2),
+		.dex-table th:nth-child(3), .dex-table td:nth-child(3) { width: var(--col-type); }
+		.dex-table th:nth-child(4), .dex-table td:nth-child(4),
+		.dex-table th:nth-child(5), .dex-table td:nth-child(5) { width: var(--col-ability); }
+		.dex-table th:nth-child(6), .dex-table td:nth-child(6) { width: var(--col-hidden); }
+		.dex-table th:nth-child(7), .dex-table td:nth-child(7) { width: var(--col-bst); }
+		.dex-table th:nth-child(n+8), .dex-table td:nth-child(n+8) { width: var(--col-stat); }
+
+		/* center Types + BST + stats */
+		.dex-table th:nth-child(2), .dex-table td:nth-child(2),
+		.dex-table th:nth-child(3), .dex-table td:nth-child(3),
+		.dex-table th:nth-child(7), .dex-table td:nth-child(7),
+		.dex-table th:nth-child(n+8), .dex-table td:nth-child(n+8) {
+			text-align: center;
+		}
+
 	</style>
 </head>
 <body>
@@ -46,143 +113,13 @@ const BASE =  import.meta.env.BASE_URL;
 
 <main class="wrap">
 	<div id="count" style="margin:10px 2px; font-size:13px; opacity:.7;"></div>
-	<div id="grid" class="grid"></div>
+	<div id="grid"></div>
 </main>
 
 <footer>
 	Built with Astro on GitHub Pages.
 </footer>
 
-<script type="module">
-	// Base-aware fetch (works in dev and on GitHub Pages /PBSDex/)
-	const BASE = import.meta.env.BASE_URL;                // '/PBSDex/' in prod
-	const dataUrl = `${BASE}data/pokemon.json`;
-
-	const $ = sel => document.querySelector(sel);
-	const grid = $('#grid'), q = $('#q'), typeSel = $('#type'), sortSel = $('#sort'), count = $('#count');
-
-	// --- normalizers to tolerate schema changes ---
-	const toArray = (x) => Array.isArray(x) ? x : (typeof x === 'string' ? x.split(',').map(s=>s.trim()).filter(Boolean) : []);
-	const num = (x, d=0) => {
-		const n = typeof x === 'number' ? x : parseInt(x, 10);
-		return Number.isFinite(n) ? n : d;
-	};
-	const slugify = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-
-	function normalizeEntry(e, idx) {
-		const name = e.name ?? e.InternalName ?? e.internalName ?? `Pokemon ${idx+1}`;
-		const id = e.id ?? (e.internalName ? slugify(e.internalName) : slugify(name) || `pokemon-${idx+1}`);
-
-		// types may be missing or empty
-		let types = Array.isArray(e.types) ? e.types.filter(Boolean) : [];
-		// some datasets put single "type" or "Type" as a string
-		if (!types.length && (e.type || e.Type)) types = toArray(e.type || e.Type);
-
-		// stats may be missing or partial
-		const s = e.stats || {};
-		const stats = {
-			hp:  num(s.hp),
-			atk: num(s.atk),
-			def: num(s.def),
-			spa: num(s.spa),
-			spd: num(s.spd),
-			spe: num(s.spe),
-		};
-
-		// abilities may come as CSV, array, or be missing
-		const abilities = toArray(e.abilities);
-		// keep hiddenAbility separate if you want; or append it
-		// if (e.hiddenAbility) abilities.push(e.hiddenAbility);
-
-		// a small description from your PBS fields if present
-		const summary = e.summary ?? e.pokedex ?? e.kind ?? '';
-
-		// keep moves if you need them later; UI doesn’t require them
-		const moves = Array.isArray(e.moves) ? e.moves : [];
-
-		return { id, name, types, stats, abilities, summary, moves };
-	}
-
-	async function loadData() {
-		const res = await fetch(dataUrl, { cache: 'no-cache' });
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		const data = await res.json();
-		// accept either { pokemon: [...] } or plain array
-		const raw = Array.isArray(data) ? data : (data.pokemon || []);
-		return raw.map(normalizeEntry);
-	}
-
-	function bst(s) { return s.hp+s.atk+s.def+s.spa+s.spd+s.spe; }
-
-	function render(POKEMON) {
-		const query = q.value.trim().toLowerCase();
-		const type = typeSel.value;
-
-		let list = POKEMON.filter(p => {
-			const inType = !type || p.types.includes(type);
-			const text = (p.name + " " + p.types.join(" ") + " " + p.abilities.join(" ")).toLowerCase();
-			const inQuery = !query || text.includes(query);
-			return inType && inQuery;
-		});
-
-		if (sortSel.value === 'name') list.sort((a,b) => a.name.localeCompare(b.name));
-		else if (sortSel.value === 'bst') list.sort((a,b) => bst(b.stats) - bst(a.stats));
-
-		count.textContent = `${list.length} result${list.length===1?'':'s'}`;
-		grid.innerHTML = '';
-
-		for (const p of list) {
-			const card = document.createElement('article');
-			card.className = 'card';
-			card.innerHTML = `
-        <div class="title">
-          <div class="name">${p.name}</div>
-          <div class="bst">BST ${bst(p.stats)}</div>
-        </div>
-        <div class="types">${p.types.map(t=>`<span class="type">${t}</span>`).join('')}</div>
-        <div class="statrow">
-          <div class="stat">HP ${p.stats.hp}</div>
-          <div class="stat">Atk ${p.stats.atk}</div>
-          <div class="stat">Def ${p.stats.def}</div>
-          <div class="stat">SpA ${p.stats.spa}</div>
-          <div class="stat">SpD ${p.stats.spd}</div>
-          <div class="stat">Spe ${p.stats.spe}</div>
-        </div>
-        <div class="abilities"><strong>Abilities:</strong> ${p.abilities.join(', ')}</div>
-        <div style="font-size:12px; opacity:.8;">${p.summary ?? ''}</div>
-      `;
-			grid.appendChild(card);
-		}
-	}
-
-	(async () => {
-		try {
-			const POKEMON = await loadData();
-
-			// rebuild type dropdown safely
-			const typeSet = new Set();
-			POKEMON.forEach(p => p.types.forEach(t => typeSet.add(t)));
-			typeSel.innerHTML = '<option value="">All types</option>';
-			[...typeSet].sort().forEach(t => {
-				const opt = document.createElement('option');
-				opt.value = t; opt.textContent = t; typeSel.appendChild(opt);
-			});
-
-			const rerender = () => render(POKEMON);
-			q.addEventListener('input', rerender);
-			typeSel.addEventListener('change', rerender);
-			sortSel.addEventListener('change', rerender);
-			render(POKEMON);
-		} catch (err) {
-			console.error('Failed to load data', err);
-			const warn = document.createElement('div');
-			warn.style.color = '#b00020';
-			warn.style.margin = '12px 0';
-			warn.textContent = 'Failed to load data. Open the console for details.';
-			document.querySelector('main').prepend(warn);
-		}
-	})();
-</script>
-
+<script type="module" src={mainUrl}></script>
 </body>
 </html>
