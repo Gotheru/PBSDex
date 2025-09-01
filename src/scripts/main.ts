@@ -1,14 +1,15 @@
-// src/scripts/main.ts — table with fixed widths + zebra + short stat headers
+// src/scripts/main.ts — table + simple detail view (hash router)
 
 type Stats = { hp: number; atk: number; def: number; spa: number; spd: number; spe: number };
 type Move = { level: number; move: string };
 type Mon = {
     id: string;
+    internalName: string;
     name: string;
-    types: string[];              // [Type1, Type2?]
-    stats: Stats;                 // { hp, atk, def, spa, spd, spe }
-    abilities: string[];          // [Ability1, Ability2?]
-    hiddenAbility?: string;       // single
+    types: string[];
+    stats: Stats;
+    abilities: string[];
+    hiddenAbility?: string;
     summary?: string;
     moves?: Move[];
 };
@@ -30,10 +31,10 @@ const num = (x: unknown, d = 0): number => {
 const slugify = (s: string) =>
     (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+// ---------- normalize one entry ----------
 function normalizeEntry(e: any, idx: number): Mon {
     const name: string = e.name ?? e.Name ?? e.internalName ?? e.InternalName ?? `Pokemon ${idx + 1}`;
     const id: string = e.id ?? (e.internalName ? slugify(e.internalName) : slugify(name) || `pokemon-${idx + 1}`);
-
     let types: string[] = [];
     if (Array.isArray(e.types)) types = e.types;
     else if (typeof e.types === "string") types = toArray(e.types);
@@ -55,7 +56,13 @@ function normalizeEntry(e: any, idx: number): Mon {
     const hiddenAbility: string | undefined = (e.hiddenAbility ?? e.HiddenAbility) || undefined;
 
     return {
-        id, name, types, stats, abilities, hiddenAbility,
+        id,
+        internalName: e.internalName || e.InternalName || id,
+        name,
+        types,
+        stats,
+        abilities,
+        hiddenAbility,
         summary: e.summary ?? e.pokedex ?? e.Pokedex ?? e.kind ?? "",
         moves: Array.isArray(e.moves) ? e.moves : []
     };
@@ -65,10 +72,9 @@ function bst(s: Stats) {
     return s.hp + s.atk + s.def + s.spa + s.spd + s.spe;
 }
 
+// ---------- data load ----------
 async function loadData(): Promise<Mon[]> {
-    const base = BASE.endsWith("/") ? BASE : BASE + "/";
-    const dataUrl = new URL("data/pokemon.json", window.location.origin + base).toString();
-
+    const dataUrl = new URL("./data/pokemon.json", document.baseURI).toString();
     const res = await fetch(dataUrl, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
     const data: any = await res.json();
@@ -83,7 +89,7 @@ async function loadData(): Promise<Mon[]> {
     return raw.map(normalizeEntry);
 }
 
-/* ---------------- column width calculation (overall max) ---------------- */
+/* ---------- column width calculation (overall max; compact caps) ---------- */
 
 function measureWidths(pokemon: Mon[]) {
     const canvas = document.createElement("canvas");
@@ -116,19 +122,8 @@ function measureWidths(pokemon: Mon[]) {
     });
     const maxStat = Math.max(...[...statStrings].map(w));
 
-    // Small safety so text doesn’t clip inside the content box.
     const fudge = 6;
-
-    // HARD CAPS (content width only). These keep the total width within the 1100px container.
-    // (Padding is handled in CSS; we don't add it here.)
-    const cap = {
-        name:   120, // content px
-        type:    70,
-        ability: 95,
-        hidden: 100,
-        bst:     36,
-        stat:    30,
-    };
+    const cap = { name:120, type:70, ability:95, hidden:100, bst:36, stat:30 };
 
     return {
         name:   Math.min(maxName   + fudge, cap.name),
@@ -140,8 +135,7 @@ function measureWidths(pokemon: Mon[]) {
     };
 }
 
-
-/* ---------------- render ---------------- */
+/* ---------- table rendering ---------- */
 
 function buildTableHTML(list: Mon[]) {
     return `
@@ -172,13 +166,13 @@ function buildTableHTML(list: Mon[]) {
         const hidden = p.hiddenAbility ?? "";
         const sum = bst(p.stats);
         return `
-      <tr>
-        <td>${p.name}</td>
-        <td>${type1}</td>
-        <td>${type2}</td>
-        <td>${ability1}</td>
-        <td>${ability2}</td>
-        <td>${hidden}</td>
+      <tr class="rowlink" tabindex="0" data-id="${p.id}">
+        <td title="${p.name}">${p.name}</td>
+        <td title="${type1}">${type1}</td>
+        <td title="${type2}">${type2}</td>
+        <td title="${ability1}">${ability1}</td>
+        <td title="${ability2}">${ability2}</td>
+        <td title="${hidden}">${hidden}</td>
         <td>${sum}</td>
         <td>${p.stats.hp}</td>
         <td>${p.stats.atk}</td>
@@ -231,13 +225,11 @@ function renderTable(pokemon: Mon[]) {
 
     count.textContent = `${list.length} result${list.length === 1 ? "" : "s"}`;
 
-    // Build table first…
     grid.innerHTML = buildTableHTML(list);
 
-    // …then apply fixed widths computed from the FULL dataset (not just filtered)
+    // set fixed widths based on the FULL dataset (stored on #grid)
     const table = grid.querySelector<HTMLTableElement>(".dex-table");
     if (table) {
-        // We keep the full set cached in a data attr for width calc
         const allDataJson = grid.getAttribute("data-all-pokemon");
         if (allDataJson) {
             const allData: Mon[] = JSON.parse(allDataJson);
@@ -252,26 +244,125 @@ function renderTable(pokemon: Mon[]) {
     }
 }
 
-/* ---------------- start ---------------- */
+/* ---------- detail rendering ---------- */
+
+function buildDetailHTML(p: Mon) {
+    const type1 = p.types[0] ?? "";
+    const type2 = p.types[1] ?? "";
+    const ability1 = p.abilities[0] ?? "";
+    const ability2 = p.abilities[1] ?? "";
+    const hidden = p.hiddenAbility ?? "";
+
+    return `
+  <article class="detail">
+    <button class="back" aria-label="Back to list">← Back</button>
+    <h1 class="detail-name">${p.name}</h1>
+
+    <section class="detail-block">
+      <h2>Info</h2>
+      <div class="kv">
+        <div><span>Type1</span><strong>${type1 || "—"}</strong></div>
+        <div><span>Type2</span><strong>${type2 || "—"}</strong></div>
+        <div><span>Ability1</span><strong>${ability1 || "—"}</strong></div>
+        <div><span>Ability2</span><strong>${ability2 || "—"}</strong></div>
+        <div><span>Hidden Ability</span><strong>${hidden || "—"}</strong></div>
+      </div>
+    </section>
+
+    <section class="detail-block">
+      <h2>Base Stats</h2>
+      <table class="stats">
+        <tbody>
+          <tr><td>HP</td><td class="num">${p.stats.hp}</td></tr>
+          <tr><td>Atk</td><td class="num">${p.stats.atk}</td></tr>
+          <tr><td>Def</td><td class="num">${p.stats.def}</td></tr>
+          <tr><td>SpA</td><td class="num">${p.stats.spa}</td></tr>
+          <tr><td>SpD</td><td class="num">${p.stats.spd}</td></tr>
+          <tr><td>Spe</td><td class="num">${p.stats.spe}</td></tr>
+          <tr class="bst"><td>BST</td><td class="num">${bst(p.stats)}</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </article>`;
+}
+
+function renderDetail(pokemon: Mon[], id: string) {
+    const grid = document.querySelector<HTMLElement>("#grid");
+    const count = document.querySelector<HTMLElement>("#count");
+    if (!grid || !count) return;
+    const mon = pokemon.find(m => m.id === id);
+    if (!mon) {
+        grid.innerHTML = `<div style="padding:16px;">Not found.</div>`;
+        return;
+    }
+    count.textContent = "Details";
+    grid.innerHTML = buildDetailHTML(mon);
+
+    const backBtn = grid.querySelector<HTMLButtonElement>(".back");
+    backBtn?.addEventListener("click", () => navigateToList());
+}
+
+/* ---------- tiny hash router ---------- */
+
+function hashToId(): string | null {
+    const m = location.hash.match(/^#\/mon\/(.+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+}
+function navigateToMon(id: string) {
+    location.hash = `#/mon/${encodeURIComponent(id)}`;
+}
+function navigateToList() {
+    history.pushState("", document.title, window.location.pathname + window.location.search); // clear hash
+    renderCurrent();
+}
+function renderCurrent() {
+    const grid = document.querySelector<HTMLElement>("#grid");
+    if (!grid) return;
+    const allDataJson = grid.getAttribute("data-all-pokemon");
+    if (!allDataJson) return;
+    const pokemon: Mon[] = JSON.parse(allDataJson);
+    const id = hashToId();
+    if (id) renderDetail(pokemon, id);
+    else renderTable(pokemon);
+}
+
+/* ---------- start ---------- */
 
 async function start() {
     const pokemon = await loadData();
     buildFilters(pokemon);
 
-    // Stash the full dataset on #grid so we can compute widths after filtering
     const grid = document.querySelector<HTMLElement>("#grid");
     if (grid) grid.setAttribute("data-all-pokemon", JSON.stringify(pokemon));
 
+    // list interactions
     const q = document.querySelector<HTMLInputElement>("#q");
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
     const sortSel = document.querySelector<HTMLSelectElement>("#sort");
-
     const rerender = () => renderTable(pokemon);
     q?.addEventListener("input", rerender);
     typeSel?.addEventListener("change", rerender);
     sortSel?.addEventListener("change", rerender);
 
-    renderTable(pokemon);
+    // click/keyboard on rows → navigate to detail
+    grid?.addEventListener("click", (e) => {
+        const tr = (e.target as HTMLElement).closest<HTMLTableRowElement>("tr.rowlink");
+        if (tr?.dataset.id) navigateToMon(tr.dataset.id);
+    });
+    grid?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+            const tr = (e.target as HTMLElement).closest<HTMLTableRowElement>("tr.rowlink");
+            if (tr?.dataset.id) {
+                e.preventDefault();
+                navigateToMon(tr.dataset.id);
+            }
+        }
+    });
+
+    window.addEventListener("hashchange", renderCurrent);
+
+    // initial render based on hash
+    renderCurrent();
 }
 
 // Run in the browser after DOM is ready

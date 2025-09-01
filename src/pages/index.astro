@@ -92,7 +92,34 @@ import mainUrl from '../scripts/main.ts?url';
 		.dex-table th:nth-child(n+8), .dex-table td:nth-child(n+8) {
 			text-align: center;
 		}
+		/* Make table rows obviously interactive */
+		.rowlink { cursor: pointer; }
+		.rowlink:focus { outline: 2px solid #93c5fd; outline-offset: -2px; }
 
+		/* Simple detail view */
+		.detail {
+			background: #fff;
+			border-radius: 14px;
+			box-shadow: 0 6px 20px rgba(0,0,0,.06);
+			padding: 16px;
+			min-height: 240px;
+		}
+		.detail .back {
+			appearance: none; border: 1px solid #ddd; background: #f8fafc;
+			padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 8px;
+		}
+		.detail-name { margin: 6px 0 12px; }
+		.detail-block { margin-top: 12px; }
+		.detail-block h2 { font-size: 14px; opacity: .75; margin: 0 0 6px; }
+
+		.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
+		.kv > div { display: flex; justify-content: space-between; padding: 8px 10px; background: #f7f7f9; border-radius: 8px; }
+		.kv span { opacity: .7; }
+
+		.stats { border-collapse: collapse; }
+		.stats td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+		.stats td.num { text-align: right; font-variant-numeric: tabular-nums; }
+		.stats tr.bst td { font-weight: 700; }
 	</style>
 </head>
 <body>
