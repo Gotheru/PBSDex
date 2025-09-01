@@ -1,5 +1,5 @@
 ---
-/* No frontmatter needed for this page */
+const BASE =  import.meta.env.BASE_URL;
 ---
 <!doctype html>
 <html lang="en">
@@ -53,45 +53,33 @@
 	Built with Astro on GitHub Pages.
 </footer>
 
-<script id="dex-data" type="application/json">
-	{
-		"pokemon": [
-			{
-				"id": "sparkuin",
-				"name": "Sparkuin",
-				"types": ["Ice","Electric"],
-				"stats": {"hp":70,"atk":65,"def":80,"spa":95,"spd":85,"spe":95},
-				"abilities": ["Static Slipstream","Snow Cloak"],
-				"summary": "Glides on frozen waves while charging the air."
-			},
-			{
-				"id": "pyrox",
-				"name": "Pyrox",
-				"types": ["Fire","Rock"],
-				"stats": {"hp":80,"atk":100,"def":90,"spa":70,"spd":70,"spe":60},
-				"abilities": ["Flame Armor","Pressure"],
-				"summary": "Its molten core hardens into armor mid-battle."
-			}
-		]
-	}
-</script>
-
 <script>
 	const $ = sel => document.querySelector(sel);
 	const grid = $('#grid'), q = $('#q'), typeSel = $('#type'), sortSel = $('#sort'), count = $('#count');
-	const data = JSON.parse(document.getElementById('dex-data').textContent);
-	let POKEMON = data.pokemon;
 
-	const typeSet = new Set();
-	POKEMON.forEach(p => p.types.forEach(t => typeSet.add(t)));
-	[...typeSet].sort().forEach(t => {
-		const opt = document.createElement('option');
-		opt.value = t; opt.textContent = t; typeSel.appendChild(opt);
-	});
+	// The BASE placeholder below is injected at build-time by Astro:
+	const BASE = import.meta.env.BASE_URL;      // '/PBSDex/' in dev & prod for your project
+	const dataUrl = `${BASE}data/pokemon.json`;       // -> '/PBSDex/data/pokemon.json'
+
+	async function loadData() {
+		try {
+			const res = await fetch(dataUrl, { cache: "no-cache" });
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			return await res.json();
+		} catch (err) {
+			console.error("Failed to load data:", err);
+			const warn = document.createElement('div');
+			warn.style.color = '#b00020';
+			warn.style.margin = '12px 0';
+			warn.textContent = 'Failed to load data. Check public/data/pokemon.json and your deployment.';
+			document.querySelector('main').prepend(warn);
+			return { pokemon: [] };
+		}
+	}
 
 	function bst(s) { return s.hp+s.atk+s.def+s.spa+s.spd+s.spe; }
 
-	function render() {
+	function render(POKEMON) {
 		const query = q.value.trim().toLowerCase();
 		const type = typeSel.value;
 
@@ -133,10 +121,27 @@
 		}
 	}
 
-	q.addEventListener('input', render);
-	typeSel.addEventListener('change', render);
-	sortSel.addEventListener('change', render);
-	render();
+	(async () => {
+		const data = await loadData();
+		const POKEMON = Array.isArray(data) ? data : (data.pokemon || []);
+
+		// Populate the type dropdown once
+		const typeSet = new Set();
+		POKEMON.forEach(p => p.types.forEach(t => typeSet.add(t)));
+		[...typeSet].sort().forEach(t => {
+			const opt = document.createElement('option');
+			opt.value = t; opt.textContent = t; typeSel.appendChild(opt);
+		});
+
+		// Wire up events
+		const rerender = () => render(POKEMON);
+		q.addEventListener('input', rerender);
+		typeSel.addEventListener('change', rerender);
+		sortSel.addEventListener('change', rerender);
+
+		// First render
+		render(POKEMON);
+	})();
 </script>
 </body>
 </html>
