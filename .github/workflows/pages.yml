@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: python3 scripts/pbs_pokemon_to_json.py data/pokemon.txt public/data/pokemon.json
+      - run: python3 scripts/pbs_pokemon_to_json.py public/data/pokemon.txt public/data/pokemon.json
       - run: npm ci || npm install
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
