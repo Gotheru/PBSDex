@@ -49,15 +49,27 @@ function formatAbilities(abilities: string[], hidden?: string): string {
 
 
 // --- stat bar helpers ---
-const STAT_MAX = 200; // scale: 0–100; values above 100 clamp to a full bar
+// Using a broader range keeps tall stats from capping visually too early.
+const STAT_MAX = 200; // 0..200 → 10 is VERY low, 181 ≈ 90% width
 
 function statBarHTML(v: number) {
-    // width (0–100)
-    const pct = Math.max(0, Math.min(100, Math.round((Math.min(v, STAT_MAX) / STAT_MAX) * 100)));
-    // color hue: ~10 (red/orange) → ~50 (gold) as value increases
-    const hue = Math.round(10 + (Math.min(v, STAT_MAX) / STAT_MAX) * 40);
-    return `<div class="statbar" style="--w:${pct}%;--h:${hue}"></div>`;
+    const clamped = Math.max(0, Math.min(STAT_MAX, v));
+    const t = clamped / STAT_MAX;                  // 0..1
+    const pct = Math.round(t * 100);               // width %
+    const hue = Math.round(t * 170);               // 0 (red) → 170 (cyan)
+
+    // Make low numbers look deeper/richer red:
+    // lower lightness at the low-end; slightly higher at the top-end
+    const l1 = (36 + 24 * t).toFixed(1);           // 48% → 60%
+    const l2 = (26 + 24 * t).toFixed(1);           // 38% → 50%
+    // Saturation slightly eases at the top so cyan isn’t neon
+    const s1 = (96 - 10 * t).toFixed(1);           // 96% → 86%
+    const s2 = (92 - 10 * t).toFixed(1);           // 92% → 82%
+
+    return `<div class="statbar" style="--w:${pct}%;--h:${hue};--s1:${s1}%;--l1:${l1}%;--s2:${s2}%;--l2:${l2}%"></div>`;
 }
+
+
 
 function formatTyping(types: string[]): string {
     if (!types || types.length === 0) return "—";
@@ -95,6 +107,43 @@ function applyDexTableSizing(container: HTMLElement) {
     table.style.setProperty("--col-hidden", `${widths.hidden}px`);
     table.style.setProperty("--col-bst", `${widths.bst}px`);
     table.style.setProperty("--col-stat", `${widths.stat}px`);
+}
+
+// ----------- dark mode ----------------
+
+type ThemeMode = "light" | "dark";
+
+function resolveInitialTheme(): ThemeMode {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") return saved as ThemeMode;
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return prefersDark ? "dark" : "light";
+}
+
+function applyTheme(mode: ThemeMode) {
+    document.documentElement.setAttribute("data-theme", mode === "dark" ? "dark" : "light");
+    const btn = document.querySelector<HTMLButtonElement>("#theme-toggle");
+    if (btn) btn.textContent = mode === "dark" ? "☀️" : "🌙";
+}
+
+function initTheme() {
+    let mode = resolveInitialTheme();
+    applyTheme(mode);
+    localStorage.setItem("theme", mode);
+
+    // Toggle handler
+    const btn = document.querySelector<HTMLButtonElement>("#theme-toggle");
+    btn?.addEventListener("click", () => {
+        mode = (document.documentElement.getAttribute("data-theme") === "dark") ? "light" : "dark";
+        applyTheme(mode);
+        localStorage.setItem("theme", mode);
+    });
+
+    // If user hasn't chosen manually, you could react to OS changes:
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", (e) => {
+      if (!localStorage.getItem("theme")) { mode = e.matches ? "dark" : "light"; applyTheme(mode); }
+    });
 }
 
 
@@ -396,6 +445,8 @@ function renderCurrent() {
 /* ---------- start ---------- */
 
 async function start() {
+    initTheme();
+
     const [abilities, pokemon] = await Promise.all([
         loadAbilities(),
         loadData(),

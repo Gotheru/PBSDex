@@ -52,7 +52,6 @@
         }
 
         /* optional: links inside table + lists in ability page */
-        .dex-table a { color: inherit; text-decoration: underline; }
         ul.list { margin: 0; padding-left: 18px; }
         ul.list li { margin: 4px 0; }
 
@@ -101,6 +100,122 @@
             box-shadow: inset 0 -1px 0 rgba(0,0,0,.25);
         }
 
+        /* controls: now 4 columns */
+        .controls { display: grid; grid-template-columns: 1fr 220px 160px auto; gap: var(--gap); align-items: center; }
+
+        .theme-btn {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* ===========================
+   Dark theme overrides
+   =========================== */
+        [data-theme="dark"] body { color: #e8ecf1; background: #0f1115; }
+        [data-theme="dark"] header { background: #161a22; box-shadow: 0 1px 0 rgba(0,0,0,.6); }
+        [data-theme="dark"] .wrap { color: inherit; }
+
+        [data-theme="dark"] input,
+        [data-theme="dark"] select,
+        [data-theme="dark"] .theme-btn {
+            background: #0f1115;
+            color: #e8ecf1;
+            border: 1px solid #2b3040;
+        }
+        [data-theme="dark"] .theme-btn { background: #161a22; }
+
+        [data-theme="dark"] .dex-table {
+            background: #161a22;
+            box-shadow: 0 6px 20px rgba(0,0,0,.35);
+        }
+        [data-theme="dark"] .dex-table thead th { background: #1b2030; color: #e8ecf1; }
+        [data-theme="dark"] .dex-table th,
+        [data-theme="dark"] .dex-table td { border-bottom: 1px solid #2b3040; color: #e8ecf1; }
+
+        [data-theme="dark"] .dex-table tbody tr:nth-child(odd) { background: #141824; }
+        [data-theme="dark"] .dex-table tbody tr:nth-child(even) { background: #111521; }
+        [data-theme="dark"] .dex-table tbody tr:hover { background: #24314a; }
+
+        [data-theme="dark"] .detail { background: #161a22; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+        [data-theme="dark"] .detail .back { background: #121723; border-color: #2b3040; color: #e8ecf1; }
+        [data-theme="dark"] .kv > div { background: #121723; }
+
+        [data-theme="dark"] .statbar { background: #20263a; }
+        [data-theme="dark"] .statbar::after { box-shadow: inset 0 -1px 0 rgba(0,0,0,.45); }
+
+        [data-theme="dark"] footer { color: #9aa3b2; }
+
+        .dex-table a.abil-link { text-decoration: underline; } /* readable in both themes */
+
+        /* Ability links in the Pokémon detail page — look like plain text */
+        .detail a.abil-link,
+        .detail a.abil-link:visited {
+            color: inherit;          /* no blue/purple */
+            text-decoration: none;   /* no underline */
+        }
+
+        /* Optional: a tiny cue on hover, remove if you want zero decoration */
+        .detail a.abil-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Optional: keyboard focus ring for accessibility */
+        .detail a.abil-link:focus {
+            outline: 2px solid #93c5fd;
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+        [data-theme="dark"] .detail a.abil-link:focus { outline-color: #60a5fa; }
+
+        /* Ability links in tables — plain text look */
+        .dex-table a.abil-link,
+        .dex-table a.abil-link:visited {
+            color: inherit;          /* no blue/purple */
+            text-decoration: none;   /* no underline */
+        }
+
+        /* keep it plain even on hover */
+        .dex-table a.abil-link:hover {
+            text-decoration: none;
+        }
+
+        /* accessibility: keep a clear keyboard focus */
+        .dex-table a.abil-link:focus {
+            outline: 2px solid #93c5fd;
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+        [data-theme="dark"] .dex-table a.abil-link:focus { outline-color: #60a5fa; }
+
+        /* Light theme — dynamic hue (red → cyan) with a glossy vertical gradient */
+        .statbar::after {
+            background: linear-gradient(
+                    to bottom,
+                    hsl(var(--h) 95% 60%),
+                    hsl(var(--h) 90% 50%)
+            );
+        }
+
+        /* Dark theme — same hue mapping, just deeper lightness for contrast */
+        [data-theme="dark"] .statbar::after {
+            background: linear-gradient(
+                    to bottom,
+                    hsl(var(--h) 80% 55%),
+                    hsl(var(--h) 75% 45%)
+            );
+        }
+
+        /* Optional: a subtle outer glow for very high stats (looks nice in dark) */
+        [data-theme="dark"] .statbar::after {
+            box-shadow:
+                    inset 0 -1px 0 rgba(0,0,0,.45),
+                    0 0 6px hsl(var(--h) 70% 55% / .25);
+        }
+
+
     </style>
 </head>
 <body>
@@ -113,6 +228,7 @@
                 <option value="name">Sort: Name (A–Z)</option>
                 <option value="bst">Sort: Total stats (desc)</option>
             </select>
+            <button id="theme-toggle" class="theme-btn" title="Toggle dark mode">🌙</button>
         </div>
     </div>
 </header>
