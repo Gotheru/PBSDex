@@ -36,6 +36,19 @@ let byInternal = new Map<string, Mon>();
 
 type AbilityInfo = { name: string; description?: string };
 type AbilityMap = Record<string, AbilityInfo>;
+type SuggestKind = 'mon' | 'move' | 'ability' | 'type';
+type SuggestItem = {
+    kind: SuggestKind;
+    id: string;           // internal id (mon.id for Pokémon; ability/move/type internal)
+    label: string;        // display name
+    sub?: string;         // optional subtext
+    iconHTML?: string;    // optional left icon HTML
+    score?: number;       // ranking score
+};
+
+let SEARCH_INDEX: SuggestItem[] = [];
+
+
 // ---- types.json loader ----
 type TypeInfo = {
     name: string; internalId: string;
@@ -43,6 +56,242 @@ type TypeInfo = {
     isSpecialType: boolean; isPseudoType: boolean; index: number;
 };
 let typeData: Record<string, TypeInfo> = {};
+
+// ---- searchbar ---- //
+
+const escapeHTML = (s:string) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+function highlight(label:string, q:string){
+    if (!q) return escapeHTML(label);
+    const i = label.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return escapeHTML(label);
+    return escapeHTML(label.slice(0,i)) + '<mark>' + escapeHTML(label.slice(i, i+q.length)) + '</mark>' + escapeHTML(label.slice(i+q.length));
+}
+
+// Resolves relative to the current page, so it works in dev ("/") and GH Pages ("/PBSDex/")
+const assetUrl = (rel: string) => new URL(rel.replace(/^\//, ""), document.baseURI).toString();
+
+// Mini sprite (left 64px of a 128×64 sheet)
+function miniIconHTML(internalName: string){
+    const url = assetUrl(`images/icons/${internalName}.png`);
+    return `<img class="suggest-icon" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+}
+
+
+function smallTypeIcons(types: string[]){
+    return `<span class="suggest-typeicons">${types.map(t => typeIconTag(t).replace('class="type-icon"', 'class="type-icon"')).join('')}</span>`;
+}
+
+function moveSmallIcon(moveId: string){
+    const mv = movesIndex?.[moveId];
+    if (!mv) return '';
+    // prefer type icon; could also show category badge if you prefer
+    return mv.type ? typeIconTag(mv.type).replace('class="type-icon"', 'class="type-icon" style="width:18px;height:18px"') : '';
+}
+
+function scoreMatch(label:string, q:string){
+    const L = label.toLowerCase(), Q = q.toLowerCase();
+    const i = L.indexOf(Q);
+    if (i < 0) return -1;
+    // startsWith gets a big boost; earlier position better; shorter label slightly better
+    return 1000 - i*2 - Math.max(0, L.length - Q.length);
+}
+
+function buildSearchIndex(){
+    const out: SuggestItem[] = [];
+
+    // Pokémon
+    for (const p of ALL_POKEMON){
+        out.push({
+            kind: 'mon',
+            id: p.id,                          // hash route uses slug id
+            label: p.name,
+            sub: p.types?.join(' • ') || '',
+            iconHTML: miniIconHTML(p.internalName),
+        });
+    }
+
+    // Moves
+    for (const [mid, mv] of Object.entries(movesIndex || {})){
+        out.push({
+            kind:'move',
+            id: mid,
+            label: mv.name || mid,
+            sub: (mv.type || mv.category) ? [mv.type, mv.category].filter(Boolean).join(' • ') : '',
+            iconHTML: moveSmallIcon(mid),
+        });
+    }
+
+    // Abilities
+    for (const [aid, a] of Object.entries(ABIL || {})){
+        out.push({
+            kind:'ability',
+            id: aid,
+            label: a.name || aid,
+            sub: a.description || '',
+        });
+    }
+
+    // Types
+    for (const tid of Object.keys(typeData || {})){
+        out.push({
+            kind:'type',
+            id: tid,
+            label: typeData[tid]?.name || tid,
+            iconHTML: typeIconTag(tid).replace('class="type-icon"', 'class="type-icon" style="width:18px;height:18px"'),
+        });
+    }
+
+    SEARCH_INDEX = out;
+}
+
+function ensureSuggestBox(){
+    let box = document.getElementById('search-suggest');
+    if (!box){
+        box = document.createElement('div');
+        box.id = 'search-suggest';
+        box.innerHTML = `<ul class="suggest-list" role="listbox"></ul>`;
+        document.querySelector('.controls')?.appendChild(box);
+    }
+    return box as HTMLDivElement;
+}
+
+function positionSuggestBox(){
+    const input = document.querySelector<HTMLInputElement>('#q');
+    const box = document.getElementById('search-suggest') as HTMLDivElement | null;
+    if (!input || !box) return;
+    const r = input.getBoundingClientRect();
+    box.style.top = `${r.bottom + 6}px`;   // 6px gap below input
+    box.style.left = `${r.left}px`;
+    box.style.width = `${r.width}px`;
+}
+
+
+function navigateFromSuggestion(s: SuggestItem){
+    if (s.kind === 'mon')      navigateToMon(s.id);
+    else if (s.kind === 'ability') location.hash = `#/ability/${encodeURIComponent(s.id)}`;
+    else if (s.kind === 'move')    location.hash = `#/move/${encodeURIComponent(s.id)}`;
+    else if (s.kind === 'type')    location.hash = `#/type/${encodeURIComponent(s.id)}`;
+}
+
+function renderSuggestions(q: string){
+    const box = ensureSuggestBox();
+    const ul  = box.querySelector('.suggest-list') as HTMLUListElement;
+    if (!q.trim()){
+        box.style.display = 'none';
+        ul.innerHTML = '';
+        return;
+    }
+
+    // score & pick top N
+    const scored: SuggestItem[] = [];
+    for (const it of SEARCH_INDEX){
+        const s = scoreMatch(it.label, q);
+        if (s >= 0) scored.push({...it, score: s});
+    }
+
+    // optional: prefer Pokémon > Moves > Abilities > Types when scores tie
+    const kindOrder: Record<SuggestKind, number> = { mon:0, move:1, ability:2, type:3 };
+    scored.sort((a,b)=> (b.score!-a.score!) || (kindOrder[a.kind]-kindOrder[b.kind]) || a.label.localeCompare(b.label));
+
+    const top = scored.slice(0, 12);
+
+    ul.innerHTML = top.map((s, idx) => `
+    <li class="suggest-item" role="option" data-kind="${s.kind}" data-id="${escapeHTML(s.id)}" data-idx="${idx}">
+      ${s.iconHTML || ''}
+      <div class="suggest-main">
+        <div class="suggest-label">${highlight(s.label, q)}</div>
+        ${s.sub ? `<div class="suggest-sub">${escapeHTML(s.sub)}</div>` : ``}
+      </div>
+      <div class="suggest-kind">${s.kind}</div>
+    </li>
+  `).join('');
+
+    // click
+    ul.querySelectorAll<HTMLLIElement>('.suggest-item').forEach(li => {
+        li.addEventListener('click', () => {
+            const idx = Number(li.dataset.idx);
+            const chosen = top[idx];
+            if (chosen) {
+                navigateFromSuggestion(chosen);
+                hideSuggestions();
+            }
+        });
+    });
+
+    // show & position
+    box.style.display = top.length ? 'block' : 'none';
+    positionSuggestBox();
+}
+
+function hideSuggestions(){
+    const box = document.getElementById('search-suggest') as HTMLDivElement | null;
+    if (box){
+        box.style.display = 'none';
+        const ul = box.querySelector('.suggest-list') as HTMLUListElement | null;
+        if (ul) ul.innerHTML = '';
+    }
+}
+
+
+function wireSearchSuggest(){
+    const input = document.querySelector<HTMLInputElement>('#q');
+    if (!input) return;
+
+    let activeIndex = -1;
+
+    const setActive = (i:number) => {
+        const ul = document.querySelector('#search-suggest .suggest-list') as HTMLUListElement | null;
+        if (!ul) return;
+        const items = Array.from(ul.querySelectorAll('.suggest-item'));
+        items.forEach(el => el.classList.remove('active'));
+        if (i >= 0 && i < items.length){
+            items[i].classList.add('active');
+            (items[i] as HTMLElement).scrollIntoView({ block: 'nearest' });
+        }
+        activeIndex = i;
+    };
+
+    input.addEventListener('input', () => {
+        renderSuggestions(input.value);
+        setActive(-1);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const ul = document.querySelector('#search-suggest .suggest-list') as HTMLUListElement | null;
+        const items = ul ? Array.from(ul.querySelectorAll('.suggest-item')) : [];
+        if (e.key === 'ArrowDown'){
+            e.preventDefault();
+            if (!items.length) return;
+            setActive((activeIndex + 1) % items.length);
+        } else if (e.key === 'ArrowUp'){
+            e.preventDefault();
+            if (!items.length) return;
+            setActive((activeIndex - 1 + items.length) % items.length);
+        } else if (e.key === 'Enter'){
+            const box = document.getElementById('search-suggest');
+            if (box && box.style.display !== 'none' && items.length){
+                e.preventDefault();
+                const pick = (activeIndex >= 0 ? items[activeIndex] : items[0]) as HTMLLIElement;
+                pick?.click();
+            }
+        } else if (e.key === 'Escape'){
+            hideSuggestions();
+        }
+    });
+
+    // hide when clicking elsewhere or navigating
+    document.addEventListener('click', (e) => {
+        const box = document.getElementById('search-suggest');
+        if (!box) return;
+        if (e.target === input || box.contains(e.target as Node)) return;
+        hideSuggestions();
+    }, { capture: true });
+
+    window.addEventListener('resize', positionSuggestBox);
+    window.addEventListener('scroll', positionSuggestBox, { passive: true });
+    window.addEventListener('hashchange', hideSuggestions);
+}
+
 
 // ---- combined defensive matchup for 1–2 types ----
 function combineDefense(types: string[]) {
@@ -1486,13 +1735,16 @@ async function start() {
     bindAbilityTooltips()
     bindTypeTooltips()
 
+    buildSearchIndex()
+    wireSearchSuggest();
+
     const grid = document.querySelector<HTMLElement>("#grid");
     if (grid) grid.setAttribute("data-all-pokemon", JSON.stringify(pokemon));
 
     const q = document.querySelector<HTMLInputElement>("#q");
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
     const rerender = () => renderTable(pokemon);
-    q?.addEventListener("input", rerender);
+    // q?.addEventListener("input", rerender);
     typeSel?.addEventListener("change", rerender);
 
     grid?.addEventListener("click", (e) => {
