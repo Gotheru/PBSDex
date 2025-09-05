@@ -1,9 +1,15 @@
+---
+/* nothing needed here, but keeping the block is fine */
+---
 <!doctype html>
 <html lang="en">
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<title>PBSDex</title>
+
+	<!-- Make all relative URLs honor your repo path in prod, and "/" in dev -->
+	<base href={import.meta.env.BASE_URL} />
 
 	<!-- Scoped styles for header/controls/layout -->
 	<style>
@@ -144,9 +150,8 @@
 	Built with Astro on GitHub Pages.
 </footer>
 
-<script type="module">
-	import '/src/scripts/main.ts';
-</script>
+<script type="module" src="/src/scripts/main.ts"></script>
+
 
 </body>
 </html>
