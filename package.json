@@ -1,19 +1,15 @@
 {
-  "name": "PBSDex",
+  "name": "pbsdex",
+  "private": true,
   "type": "module",
-  "version": "0.0.1",
   "scripts": {
-    "dev": "npm-run-all -p dev:client dev:astro",
-    "dev:astro": "astro dev",
-    "dev:client": "esbuild src/scripts/main.ts --bundle --format=esm --outfile=public/PBSDex/js/main.js --watch",
-    "build": "npm run build:client && astro build",
-    "build:client": "esbuild src/scripts/main.ts --bundle --format=esm --outfile=public/PBSDex/js/main.js"
-  },
-  "dependencies": {
-    "astro": "^5.13.5"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:pages": "python3 scripts/pbs_pokemon_to_json.py public/data/pokemon.txt public/data/pokemon.json --forms public/data/pokemon_forms.txt && vite build"
   },
   "devDependencies": {
-    "esbuild": "^0.25.9",
-    "npm-run-all": "^4.1.5"
+    "vite": "^6.3.5",
+    "typescript": "^5.5.0"
   }
 }
