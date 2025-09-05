@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:pages": "python3 scripts/pbs_pokemon_to_json.py public/data/pokemon.txt public/data/pokemon.json --forms public/data/pokemon_forms.txt && vite build"
+    "build:pages": "python3 scripts/pokemon_to_json.py public/data/pokemon.txt public/data/pokemon.json --forms public/data/pokemon_forms.txt && vite build"
   },
   "devDependencies": {
     "vite": "^6.3.5",

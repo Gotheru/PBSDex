@@ -250,8 +250,8 @@ def main():
     ap.add_argument("src", help="Path to pokemon.txt")
     ap.add_argument("dest", help="Path to output pokemon.json")
     ap.add_argument("--forms", help="Path to pokemon_forms.txt", default=None)
-    ap.add_argument("--stat-order", default="hp,atk,def,spe,spd,spa",
-                    help="Order of BaseStats (default: hp,atk,def,spe,spd,spa)")
+    ap.add_argument("--stat-order", default="hp,atk,def,spe,spa,spd",
+                    help="Order of BaseStats (default: hp,atk,def,spe,spa,spd)")
     args = ap.parse_args()
 
     src = Path(args.src)

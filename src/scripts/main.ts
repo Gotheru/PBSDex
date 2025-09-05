@@ -14,7 +14,32 @@ type Mon = {
     moves?: Move[];
 };
 
-const BASE = import.meta.env.BASE_URL || "/";
+// --- stat bar helpers ---
+const STAT_MAX = 200; // scale: 0–100; values above 100 clamp to a full bar
+
+function statBarHTML(v: number) {
+    // width (0–100)
+    const pct = Math.max(0, Math.min(100, Math.round((Math.min(v, STAT_MAX) / STAT_MAX) * 100)));
+    // color hue: ~10 (red/orange) → ~50 (gold) as value increases
+    const hue = Math.round(10 + (Math.min(v, STAT_MAX) / STAT_MAX) * 40);
+    return `<div class="statbar" style="--w:${pct}%;--h:${hue}"></div>`;
+}
+
+function formatTyping(types: string[]): string {
+    if (!types || types.length === 0) return "—";
+    const t1 = types[0] ?? "";
+    const t2 = types[1] ?? "";
+    return t2 ? `${t1} | ${t2}` : t1;
+}
+
+function formatAbilities(abilities: string[], hidden?: string): string {
+    const parts: string[] = [];
+    if (abilities?.[0]) parts.push(abilities[0]);
+    if (abilities?.[1]) parts.push(abilities[1]);
+    if (hidden) parts.push(`<em>${hidden}</em>`);  // italic hidden
+    return parts.length ? parts.join(" | ") : "—";
+}
+
 
 const toArray = (x: unknown): string[] => {
     if (Array.isArray(x)) return x.filter(Boolean) as string[];
@@ -112,7 +137,7 @@ function measureWidths(pokemon: Mon[]) {
     const maxHidden = Math.max(...[...hiddenStrings].map(w));
 
     const bstStrings = new Set<string>(["BST"]);
-    pokemon.forEach(p => bstStrings.add(String(bst(p))));
+    pokemon.forEach(p => bstStrings.add(String(bst(p.stats))));
     const maxBST = Math.max(...[...bstStrings].map(w));
 
     const statStrings = new Set<string>(["HP","Atk","Def","SpA","SpD","Spe"]);
@@ -247,11 +272,8 @@ function renderTable(pokemon: Mon[]) {
 /* ---------- detail rendering ---------- */
 
 function buildDetailHTML(p: Mon) {
-    const type1 = p.types[0] ?? "";
-    const type2 = p.types[1] ?? "";
-    const ability1 = p.abilities[0] ?? "";
-    const ability2 = p.abilities[1] ?? "";
-    const hidden = p.hiddenAbility ?? "";
+    const typingStr = formatTyping(p.types);
+    const abilitiesStr = formatAbilities(p.abilities, p.hiddenAbility);
 
     return `
   <article class="detail">
@@ -261,11 +283,8 @@ function buildDetailHTML(p: Mon) {
     <section class="detail-block">
       <h2>Info</h2>
       <div class="kv">
-        <div><span>Type1</span><strong>${type1 || "—"}</strong></div>
-        <div><span>Type2</span><strong>${type2 || "—"}</strong></div>
-        <div><span>Ability1</span><strong>${ability1 || "—"}</strong></div>
-        <div><span>Ability2</span><strong>${ability2 || "—"}</strong></div>
-        <div><span>Hidden Ability</span><strong>${hidden || "—"}</strong></div>
+        <div><span>Typing</span><strong>${typingStr}</strong></div>
+        <div><span>Abilities</span><strong>${abilitiesStr}</strong></div>
       </div>
     </section>
 
@@ -273,13 +292,13 @@ function buildDetailHTML(p: Mon) {
       <h2>Base Stats</h2>
       <table class="stats">
         <tbody>
-          <tr><td>HP</td><td class="num">${p.stats.hp}</td></tr>
-          <tr><td>Atk</td><td class="num">${p.stats.atk}</td></tr>
-          <tr><td>Def</td><td class="num">${p.stats.def}</td></tr>
-          <tr><td>SpA</td><td class="num">${p.stats.spa}</td></tr>
-          <tr><td>SpD</td><td class="num">${p.stats.spd}</td></tr>
-          <tr><td>Spe</td><td class="num">${p.stats.spe}</td></tr>
-          <tr class="bst"><td>BST</td><td class="num">${bst(p.stats)}</td></tr>
+          <tr><td class="label">HP</td>   <td class="num">${p.stats.hp}</td>  <td class="bar">${statBarHTML(p.stats.hp)}</td></tr>
+          <tr><td class="label">Atk</td>  <td class="num">${p.stats.atk}</td> <td class="bar">${statBarHTML(p.stats.atk)}</td></tr>
+          <tr><td class="label">Def</td>  <td class="num">${p.stats.def}</td> <td class="bar">${statBarHTML(p.stats.def)}</td></tr>
+          <tr><td class="label">SpA</td>  <td class="num">${p.stats.spa}</td> <td class="bar">${statBarHTML(p.stats.spa)}</td></tr>
+          <tr><td class="label">SpD</td>  <td class="num">${p.stats.spd}</td> <td class="bar">${statBarHTML(p.stats.spd)}</td></tr>
+          <tr><td class="label">Spe</td>  <td class="num">${p.stats.spe}</td> <td class="bar">${statBarHTML(p.stats.spe)}</td></tr>
+          <tr class="bst"><td class="label">BST</td><td class="num">${bst(p.stats)}</td><td class="bar"></td></tr>
         </tbody>
       </table>
     </section>

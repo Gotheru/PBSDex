@@ -52,6 +52,37 @@
         .stats td { padding: 6px 8px; border-bottom: 1px solid #eee; }
         .stats td.num { text-align: right; font-variant-numeric: tabular-nums; }
         .stats tr.bst td { font-weight: 700; }
+        /* === stat bars === */
+        .stats { width: 100%; border-collapse: collapse; }
+        .stats td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .stats td.label { width: 64px; white-space: nowrap; }
+        .stats td.num { width: 48px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+        .stats td.bar { width: 260px; }
+        .kv strong em { font-style: italic; opacity: .9; }
+
+
+        .statbar {
+            position: relative;
+            height: 12px;
+            background: #f2f2f5;
+            border-radius: 6px;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.15);
+            overflow: hidden;
+        }
+        .statbar::after {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: var(--w, 0%);
+            /* red→gold range using hue 10..50 */
+            background: linear-gradient(to bottom,
+            hsl(var(--h,40) 95% 55%),
+            hsl(var(--h,40) 85% 45%)
+            );
+            border-radius: 6px;
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,.25);
+        }
+
     </style>
 </head>
 <body>
