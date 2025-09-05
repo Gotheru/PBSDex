@@ -2,17 +2,38 @@
 
 type Stats = { hp: number; atk: number; def: number; spa: number; spd: number; spe: number };
 type Move = { level: number; move: string };
+type Evolution = { to: string; method: string; param: string };
+
 type Mon = {
     id: string;
     internalName: string;
     name: string;
     types: string[];
     stats: Stats;
+
     abilities: string[];
     hiddenAbility?: string;
+
+    // text
     summary?: string;
+
+    // learnsets / misc (from new JSON)
     moves?: Move[];
+    tutorMoves?: string[];
+    eggMoves?: string[];
+    machineMoves?: string[];
+    evolutions?: Evolution[];
+
+    // relations
+    prevo?: string;            // ← NEW
+    isForm?: boolean;
+    baseInternal?: string;
 };
+
+let ALL_POKEMON: Mon[] = [];
+let byInternal = new Map<string, Mon>();
+
+
 type AbilityInfo = { name: string; description?: string };
 type AbilityMap = Record<string, AbilityInfo>;
 // ---- types.json loader ----
@@ -80,17 +101,125 @@ function typeMatchupTooltipHTML(types: string[]) {
     return html || `<div class="tip-row"><i>No notable modifiers</i></div>`;
 }
 
+// ----- Moves ------
+// Moves index (from moves.json)
+let movesIndex: Record<string, any> = {};
+
+async function loadMoves() {
+    const dataUrl = new URL("./data/moves.json", document.baseURI).toString();
+    const res = await fetch(dataUrl, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
+    movesIndex = await res.json();
+}
+
+// ── Category icon helpers (PHYSICAL / SPECIAL / STATUS) ────────────────
+function categoryIconCandidates(catRaw: string | undefined): string[] {
+    const base = new URL("./images/categories/", document.baseURI).toString();
+    const c = String(catRaw || "");
+    const up = c.toUpperCase();
+    const cap = c ? c[0].toUpperCase() + c.slice(1).toLowerCase() : c;
+    const variants = [up, cap, c.toLowerCase()];
+    const exts = ["png", "PNG"];
+    const seen = new Set<string>(); const urls: string[] = [];
+    for (const v of variants) for (const ext of exts) {
+        const u = base + encodeURIComponent(v) + "." + ext;
+        if (!seen.has(u)) { urls.push(u); seen.add(u); }
+    }
+    return urls;
+}
+function categoryIconTag(catRaw: string | undefined) {
+    if (!catRaw) return "";
+    const srcs = categoryIconCandidates(catRaw);
+    const alt = String(catRaw);
+    return `<img class="cat-icon"
+               src="${srcs[0]}" data-srcs="${srcs.join("|")}" data-idx="0"
+               alt="${alt}" title="${alt}" loading="lazy" decoding="async">`;
+}
+
+// ── Move lookup helpers (from moves.json you loaded into movesIndex) ───
+function moveInfo(moveId: string) {
+    return movesIndex?.[moveId] || null;
+}
+function moveDisplayName(moveId: string) {
+    const m = moveInfo(moveId);
+    return (m?.name) || moveId;
+}
+
+function buildLevelUpTable(p: Mon): string {
+    const list = (p.moves || [])
+        .slice()
+        .sort((a, b) => (a.level - b.level) || a.move.localeCompare(b.move));
+
+    if (!list.length) {
+        return `
+      <section class="learnset">
+        <h2 class="learnset-title">Level-Up Moves</h2>
+        <div class="empty-learnset">No level-up moves found.</div>
+      </section>`;
+    }
+
+    const rows = list.map(({ level, move }) => {
+        const mv = moveInfo(move);
+        const levelLabel = (level === 0) ? "Evolve" : (level === 1 ? "—" : String(level));
+
+        const typeIcon = mv?.type ? typeIconTag(mv.type) : "";
+        const catIcon  = categoryIconTag(mv?.category);
+
+        // Power: em-dash when null/undefined or explicitly 1 (per your rule) or Status
+        const power = (mv?.category === "Status" || mv?.power == null || mv?.power === 1) ? "—" : String(mv.power ?? "—");
+        // Accuracy: em-dash when 0 (always hits) or missing
+        const acc   = (mv?.accuracy == null || mv?.accuracy === 0) ? "—" : String(mv.accuracy);
+        // PP: should always be present, fallback just in case
+        const pp    = (mv?.pp ?? "—");
+
+        const desc  = mv?.description || "";
+
+        return `
+      <tr>
+        <td class="lv">${levelLabel}</td>
+        <td class="mv-name" title="${moveDisplayName(move)}">${moveLinkHTML(move)}</td>
+        <td class="mv-type">${typeIcon}</td>
+        <td class="mv-cat">${catIcon}</td>
+        <td class="mv-num">${power}</td>
+        <td class="mv-num">${acc}</td>
+        <td class="mv-num">${pp}</td>
+        <td class="mv-desc">${desc}</td>
+      </tr>`;
+    }).join("");
+
+    return `
+  <section class="learnset">
+    <h2 class="learnset-title">Level-Up Moves</h2>
+    <table class="moves-table">
+      <thead>
+        <tr>
+          <th class="lv">Lv</th>
+          <th class="mv-name">Move</th>
+          <th class="mv-type">Type</th>
+          <th class="mv-cat">Cat</th>
+          <th class="mv-num">Power</th>
+          <th class="mv-num">Acc</th>
+          <th class="mv-num">PP</th>
+          <th class="mv-desc">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </section>`;
+}
 
 
 // --- Abilities ---
 
 let ABIL: AbilityMap = {}; // filled at startup
 
-async function loadAbilities(): Promise<AbilityMap> {
+async function loadAbilities() {
     const url = new URL("./data/abilities.json", document.baseURI).toString();
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return await res.json();
+    ABIL = await res.json();
 }
 
 async function loadTypes() {
@@ -120,6 +249,11 @@ function abilityLinkHTML(id?: string | null, opts?: { hidden?: boolean }) {
     const tip  = ABIL[id]?.description ? ` data-tip="${escapeAttr(ABIL[id].description!)}"` : "";
     const a = `<a href="#/ability/${encodeURIComponent(id)}" class="abil-link"${tip}>${name}</a>`;
     return opts?.hidden ? `<em>${a}</em>` : a;
+}
+
+function moveLinkHTML(moveId: string) {
+    const name = moveDisplayName(moveId);
+    return `<a href="#/move/${encodeURIComponent(moveId)}" class="move-link" data-move="${moveId}" title="${name}">${name}</a>`;
 }
 
 
@@ -319,6 +453,64 @@ function iconCandidates(p: Mon): string[] {
     }
     return urls;
 }
+
+function moveRowHTML(moveId: string) {
+    const mv = movesIndex?.[moveId] || null;
+
+    const name = moveDisplayName(moveId);
+    const typeIcon = mv?.type ? typeIconTag(mv.type) : "";
+    const catIcon  = categoryIconTag(mv?.category);
+
+    // Power: em-dash for Status / null / 1
+    const power = (mv?.category === "Status" || mv?.power == null || mv?.power === 1) ? "—" : String(mv.power ?? "—");
+    // Accuracy: em-dash for 0 or missing
+    const acc   = (mv?.accuracy == null || mv?.accuracy === 0) ? "—" : String(mv.accuracy);
+    // PP
+    const pp    = (mv?.pp ?? "—");
+    const desc  = mv?.description || "";
+
+    return `
+    <tr>
+      <td class="mv-name" title="${name}">${moveLinkHTML(moveId)}</td>
+      <td class="mv-type">${typeIcon}</td>
+      <td class="mv-cat">${catIcon}</td>
+      <td class="mv-num">${power}</td>
+      <td class="mv-num">${acc}</td>
+      <td class="mv-num">${pp}</td>
+      <td class="mv-desc">${desc}</td>
+    </tr>`;
+}
+
+function buildMovesTableNoLv(title: string, ids: string[]) {
+    const uniq = Array.from(new Set(ids.filter(Boolean)));
+    uniq.sort((a, b) => (moveDisplayName(a)).localeCompare(moveDisplayName(b)));
+
+    const rows = uniq.map(moveRowHTML).join("");
+
+    return `
+  <section class="learnset">
+    <h2 class="learnset-title">${title}</h2>
+    ${
+        uniq.length
+            ? `<table class="moves-table no-lv">
+           <thead>
+             <tr>
+               <th class="mv-name">Move</th>
+               <th class="mv-type">Type</th>
+               <th class="mv-cat">Cat</th>
+               <th class="mv-num">Power</th>
+               <th class="mv-num">Acc</th>
+               <th class="mv-num">PP</th>
+               <th class="mv-desc">Description</th>
+             </tr>
+           </thead>
+           <tbody>${rows}</tbody>
+         </table>`
+            : `<div class="empty-learnset">No moves found.</div>`
+    }
+  </section>`;
+}
+
 
 
 
@@ -529,22 +721,76 @@ function bst(s: Stats) {
     return s.hp + s.atk + s.def + s.spa + s.spd + s.spe;
 }
 
-// ---------- data load ----------
-async function loadData(): Promise<Mon[]> {
+async function loadPokemon(): Promise<Mon[]> {
     const dataUrl = new URL("./data/pokemon.json", document.baseURI).toString();
     const res = await fetch(dataUrl, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
-    const data: any = await res.json();
+    const raw = await res.json();
 
-    let raw: any[] = [];
-    if (Array.isArray(data)) raw = data;
-    else if (Array.isArray(data.pokemon)) raw = data.pokemon;
-    else if (data && typeof data.pokemon === "object") raw = Object.values(data.pokemon);
-    else if (data && typeof data === "object") raw = Object.values(data);
+    // file can be an array or an object map — normalize to array
+    const arr: any[] = Array.isArray(raw) ? raw : Object.values(raw || {});
 
-    console.log("Loaded dataset:", { url: dataUrl, count: raw.length, sample: raw[0] });
-    return raw.map(normalizeEntry);
+    // massage into our Mon shape, keeping fields if present
+    const list: Mon[] = arr.map((e: any, idx: number) => {
+        const statsObj = e.stats || {};
+        const stats: Stats = {
+            hp:  num(statsObj.hp, 0),
+            atk: num(statsObj.atk, 0),
+            def: num(statsObj.def, 0),
+            spa: num(statsObj.spa, 0),
+            spd: num(statsObj.spd, 0),
+            spe: num(statsObj.spe, 0),
+        };
+
+        const id = e.id ?? (e.internalName ? slugify(e.internalName) :
+            e.name ? slugify(e.name) : `pokemon-${idx+1}`);
+
+        const types = Array.isArray(e.types) ? e.types.filter(Boolean)
+            : toArray(e.types);
+
+        return {
+            id,
+            internalName: e.internalName ?? e.InternalName ?? id,
+            name: e.name ?? e.Name ?? e.internalName ?? `Pokemon ${idx+1}`,
+            types,
+            stats,
+            abilities: Array.isArray(e.abilities) ? e.abilities : toArray(e.abilities || e.Abilities),
+            hiddenAbility: e.hiddenAbility ?? e.HiddenAbility ?? undefined,
+            summary: e.summary ?? e.pokedex ?? e.Pokedex ?? e.kind ?? "",
+
+            moves: Array.isArray(e.moves) ? e.moves : [],
+            tutorMoves: toArray(e.tutorMoves),
+            eggMoves: toArray(e.eggMoves),
+            machineMoves: toArray(e.machineMoves),
+
+            evolutions: Array.isArray(e.evolutions) ? e.evolutions : [],
+            isForm: !!e.isForm,
+            baseInternal: e.baseInternal,
+        };
+    });
+
+    // compute and attach unique pre-evolutions
+    attachPrevos(list);
+
+    console.log("Loaded pokemon:", { url: dataUrl, count: list.length, sample: list[0] });
+    return list;
 }
+
+function attachPrevos(pokemon: Mon[]) {
+    const byInternal = new Map<string, Mon>();
+    pokemon.forEach(p => byInternal.set(p.internalName, p));
+
+    pokemon.forEach(parent => {
+        const evos = parent.evolutions || [];
+        for (const ev of evos) {
+            const child = byInternal.get(ev.to);
+            if (child && !child.prevo) {
+                child.prevo = parent.internalName; // unique, set once
+            }
+        }
+    });
+}
+
 
 /* ---------- column width calculation (overall max; compact caps) ---------- */
 
@@ -780,8 +1026,6 @@ function renderTable(pokemon: Mon[]) {
 /* ---------- detail rendering ---------- */
 
 function buildDetailHTML(p: Mon) {
-    const abilitiesStr = formatAbilities(p.abilities, p.hiddenAbility);
-
     const srcs = frontCandidates(p);
     const img = `
     <img class="mon-front"
@@ -793,53 +1037,163 @@ function buildDetailHTML(p: Mon) {
          decoding="async">
   `;
 
-    return `
+    const detailTop = `
   <article class="detail mon-layout">
     <div class="mon-art">
-      <div class="art-box">${img}</div>
+      <div class="art-box panel">${img}</div>
     </div>
 
     <div class="mon-middle">
-      <div class="info-tile">
-        <div class="info-label">Typing</div>
+      <div class="info-tile panel">
+        <div class="info-label"><b>Typing</b></div>
         <div class="info-value center">
-          <span class="type-icons big">${typingIconsHTML(p.types).replace('type-icons','type-icons big')}</span>
+          ${typingIconsHTML(p.types).replace('class="type-icons"', 'class="type-icons big"')}
         </div>
       </div>
 
-      <div class="info-tile">
-        <div class="info-label">Abilities</div>
+      <div class="info-tile panel">
+        <div class="info-label"><b>Abilities</b></div>
         <div class="info-value stacked center">
           ${
-        [ p.abilities?.[0] ? abilityLinkHTML(p.abilities[0]) : "",
+        [
+            p.abilities?.[0] ? abilityLinkHTML(p.abilities[0]) : "",
             p.abilities?.[1] ? abilityLinkHTML(p.abilities[1]) : "",
             p.hiddenAbility   ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : ""
-        ].filter(Boolean).map(h => `<div class="line">${h}</div>`).join("")
+        ]
+            .filter(Boolean)
+            .map(h => `<div class="line">${h}</div>`)
+            .join("")
     }
         </div>
       </div>
     </div>
 
     <div class="mon-stats">
-      <div class="stats-panel">
+      <div class="stats-panel panel">
         <table class="stats">
           <tbody>
-            <tr><td class="label">HP</td>   <td class="num">${p.stats.hp}</td>  <td class="bar">${statBarHTML(p.stats.hp)}</td></tr>
-            <tr><td class="label">Atk</td>  <td class="num">${p.stats.atk}</td> <td class="bar">${statBarHTML(p.stats.atk)}</td></tr>
-            <tr><td class="label">Def</td>  <td class="num">${p.stats.def}</td> <td class="bar">${statBarHTML(p.stats.def)}</td></tr>
-            <tr><td class="label">SpA</td>  <td class="num">${p.stats.spa}</td> <td class="bar">${statBarHTML(p.stats.spa)}</td></tr>
-            <tr><td class="label">SpD</td>  <td class="num">${p.stats.spd}</td> <td class="bar">${statBarHTML(p.stats.spd)}</td></tr>
-            <tr><td class="label">Spe</td>  <td class="num">${p.stats.spe}</td> <td class="bar">${statBarHTML(p.stats.spe)}</td></tr>
+            <tr><td class="label">HP</td>  <td class="num">${p.stats.hp}</td>  <td class="bar">${statBarHTML(p.stats.hp)}</td></tr>
+            <tr><td class="label">Atk</td> <td class="num">${p.stats.atk}</td> <td class="bar">${statBarHTML(p.stats.atk)}</td></tr>
+            <tr><td class="label">Def</td> <td class="num">${p.stats.def}</td> <td class="bar">${statBarHTML(p.stats.def)}</td></tr>
+            <tr><td class="label">SpA</td> <td class="num">${p.stats.spa}</td> <td class="bar">${statBarHTML(p.stats.spa)}</td></tr>
+            <tr><td class="label">SpD</td> <td class="num">${p.stats.spd}</td> <td class="bar">${statBarHTML(p.stats.spd)}</td></tr>
+            <tr><td class="label">Spe</td> <td class="num">${p.stats.spe}</td> <td class="bar">${statBarHTML(p.stats.spe)}</td></tr>
             <tr class="bst"><td class="label">BST</td><td class="num">${bst(p.stats)}</td><td class="bar"></td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </article>`;
+
+    const learnset = buildLevelUpTable(p);
+    // Tutor + Machine moves combined
+    const tutorAndTM = [
+        ...(p.tutorMoves || []),
+        ...(p.machineMoves || []),
+    ];
+    const tutorTMSection = buildMovesTableNoLv("Tutor / TM Moves", tutorAndTM);
+
+    // Egg moves
+    const eggSection = buildMovesTableNoLv("Egg Moves", eggMovesFromRoot(p));
+
+    // Return everything
+    return detailTop + learnset + tutorTMSection + eggSection;
+
+}
+
+function buildMoveDetailHTML(moveId: string): string {
+    const mv = movesIndex?.[moveId];
+    if (!mv) return `<div style="padding:16px;">Move not found.</div>`;
+
+    const typeIcon = mv.type ? typeIconTag(mv.type) : "";
+    const catIcon  = mv.category ? categoryIconTag(mv.category) : "";
+
+    // numbers / labels
+    const power = (mv.category === "Status" || mv.power == null || mv.power === 1) ? "—" : String(mv.power ?? "—");
+    const acc   = (mv.accuracy == null || mv.accuracy === 0) ? "—" : String(mv.accuracy);
+    const pp    = (mv.pp ?? "—");
+    const prio  = (mv.priority == null ? "0" : String(mv.priority));
+    const target= mv.target || "—";
+    const flags = Array.isArray(mv.flags) ? mv.flags : [];
+    const flagsHTML = flags.length
+        ? `<ul class="flag-list">${flags.map(f => `<li>${f}</li>`).join("")}</ul>`
+        : `<div class="empty-learnset">—</div>`;
+
+    const learners = pokemonLearnersOf(moveId);
+    const learnerTable = buildTableHTML(learners);
+
+    // Inline flags text
+    const flagsText = flags.length ? flags.join(", ") : "—";
+
+    return `
+  <article class="detail move-detail">
+    <div class="move-header panel">
+      <h1 class="move-name">${mv.name || moveId}</h1>
+
+      <div class="move-kv">
+        <div><span>Type</span><strong class="ico">${typeIcon}</strong></div>
+        <div><span>Category</span><strong class="ico">${catIcon}</strong></div>
+        <div><span>Power</span><strong>${power}</strong></div>
+        <div><span>Accuracy</span><strong>${acc}</strong></div>
+        <div><span>Priority</span><strong>${prio}</strong></div>
+        <div><span>PP</span><strong>${pp}</strong></div>
+      </div>
+    </div>
+
+    <section class="panel move-section">
+      <p class="move-desc">${mv.description || ""}</p>
+    </section>
+
+    <section class="panel move-section">
+      <p><b>Targets:</b> ${target}</p>
+    </section>
+
+    <section class="panel move-section">
+      <p><b>Move flags:</b> ${flagsHTML}</p>
+    </section>
+
+    <section class="move-learners">
+      <h2>Pokémon that learn ${mv.name || moveId}</h2>
+      ${learnerTable}
+    </section>
+  </article>`;
 }
 
 
 
+function chainRoot(mon: Mon): Mon {
+    let cur = mon;
+    const seen = new Set<string>();
+    while (cur.prevo && !seen.has(cur.prevo)) {
+        seen.add(cur.internalName);
+        const prev = byInternal.get(cur.prevo);
+        if (!prev) break;
+        cur = prev;
+    }
+    return cur;
+}
+
+function eggMovesFromRoot(mon: Mon): string[] {
+    const root = chainRoot(mon);
+    return Array.isArray(root.eggMoves) ? root.eggMoves : [];
+}
+
+function pokemonLearnersOf(moveId: string): Mon[] {
+    const out: Mon[] = [];
+    const seen = new Set<string>();
+    for (const p of ALL_POKEMON) {
+        const lvl  = (p.moves || []).some(m => m.move === moveId);
+        const ttm  = (p.tutorMoves || []).includes(moveId) || (p.machineMoves || []).includes(moveId);
+        const egg  = eggMovesFromRoot(p).includes(moveId);
+        if (lvl || ttm || egg) {
+            if (!seen.has(p.internalName)) {
+                seen.add(p.internalName);
+                out.push(p);
+            }
+        }
+    }
+    return out.sort((a,b)=> a.name.localeCompare(b.name));
+}
 
 function renderDetail(pokemon: Mon[], id: string) {
     const grid  = document.querySelector<HTMLElement>("#grid");
@@ -864,6 +1218,7 @@ function renderDetail(pokemon: Mon[], id: string) {
     // sprite fallback
     wireFallbacks(grid, "img.mon-front");
     wireFallbacks(grid, "img.type-icon");
+    wireFallbacks(grid, "img.cat-icon");
 
 }
 
@@ -872,14 +1227,28 @@ function renderDetail(pokemon: Mon[], id: string) {
 
 type Route = { kind: "list" } | { kind: "mon"; id: string } | { kind: "ability"; id: string };
 
-function parseHash(): Route {
-    const h = location.hash;
-    let m = h.match(/^#\/mon\/(.+)$/);
-    if (m) return { kind: "mon", id: decodeURIComponent(m[1]) };
-    m = h.match(/^#\/ability\/(.+)$/);
-    if (m) return { kind: "ability", id: decodeURIComponent(m[1]) };
-    return { kind: "list" };
+function parseHash(): {type:'list'|'mon'|'ability'|'move', id?:string} {
+    const m = location.hash.match(/^#\/(mon|ability|move)\/(.+)$/);
+    if (m) return { type: m[1] as any, id: decodeURIComponent(m[2]) };
+    return { type: 'list' };
 }
+
+function renderMoveDetail(moveId: string) {
+    const grid  = document.querySelector<HTMLElement>("#grid");
+    const count = document.querySelector<HTMLElement>("#count");
+    if (!grid || !count) return;
+
+    count.innerHTML = `<button class="header-back" aria-label="Back to list">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")
+        ?.addEventListener("click", () => navigateToList());
+
+    grid.innerHTML = buildMoveDetailHTML(moveId);
+
+    // Fallbacks + ensure learner table uses main table widths
+    wireIconFallbacks(grid);
+    applyDexTableSizing(grid);
+}
+
 
 function navigateToAbility(id: string) {
     location.hash = `#/ability/${encodeURIComponent(id)}`;
@@ -896,15 +1265,18 @@ function navigateToList() {
     history.pushState("", document.title, window.location.pathname + window.location.search); // clear hash
     renderCurrent();
 }
+
 function renderCurrent() {
     const grid = document.querySelector<HTMLElement>("#grid");
     if (!grid) return;
     const allDataJson = grid.getAttribute("data-all-pokemon");
     if (!allDataJson) return;
     const pokemon: Mon[] = JSON.parse(allDataJson);
-    const r = parseHash();
-    if (r.kind === "mon") renderDetail(pokemon, r.id);
-    else if (r.kind === "ability") renderAbilityDetail(pokemon, r.id);
+
+    const route = parseHash();
+    if (route.type === "mon"     && route.id) renderDetail(pokemon, route.id);
+    else if (route.type === "ability" && route.id) renderAbilityDetail(pokemon, route.id); // <-- pass both
+    else if (route.type === "move"    && route.id) renderMoveDetail(route.id);
     else renderTable(pokemon);
 }
 
@@ -914,16 +1286,19 @@ function renderCurrent() {
 async function start() {
     initTheme();
 
-    const [abilities, pokemon] = await Promise.all([
-        loadAbilities(),
-        loadData(),
+    await Promise.all([
+        loadAbilities?.(),  // if you already have this
+        loadTypes?.(),      // if you already have this
+        loadMoves(),        // NEW
     ]);
-    await Promise.all([loadTypes()])
-    ABIL = abilities;
 
+    const pokemon = await loadPokemon();
+    ALL_POKEMON = pokemon;
+    byInternal = new Map(pokemon.map(m => [m.internalName, m]));
+
+    buildFilters(pokemon);
     bindAbilityTooltips()
     bindTypeTooltips()
-    buildFilters(pokemon);
 
     const grid = document.querySelector<HTMLElement>("#grid");
     if (grid) grid.setAttribute("data-all-pokemon", JSON.stringify(pokemon));
@@ -957,65 +1332,29 @@ async function start() {
     renderCurrent(); // first render now sees ABIL, so names show up everywhere
 }
 
-function buildAbilityDetailHTML(abilityId: string, pokemon: Mon[]) {
-    const info = ABIL[abilityId];
-    const title = info?.name || abilityId;
-
-    const normal = pokemon.filter(p => (p.abilities || []).includes(abilityId))
-        .sort((a,b) => a.name.localeCompare(b.name));
-    const hidden = pokemon.filter(p => p.hiddenAbility === abilityId)
-        .sort((a,b) => a.name.localeCompare(b.name));
-
-    const list = (arr: Mon[]) => arr.map(p => `<li><a href="#/mon/${encodeURIComponent(p.id)}">${p.name}</a></li>`).join("");
-
-    return `
-  <article class="detail">
-
-    <section class="detail-block">
-      <h2>Description</h2>
-      <p>${info?.description || "—"}</p>
-    </section>
-
-    <section class="detail-block">
-      <h2>Pokémon with this ability</h2>
-
-      <div class="kv" style="margin-bottom:6px;"><div><span>Regular</span><strong>${normal.length}</strong></div><div><span>Hidden</span><strong>${hidden.length}</strong></div></div>
-
-      <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px;">
-        <div>
-          <h3 style="font-size:14px; opacity:.75; margin:0 0 6px;">Regular Ability</h3>
-          <ul class="list">${list(normal) || "<li>—</li>"}</ul>
-        </div>
-        <div>
-          <h3 style="font-size:14px; opacity:.75; margin:0 0 6px;">Hidden Ability</h3>
-          <ul class="list">${list(hidden) || "<li>—</li>"}</ul>
-        </div>
-      </div>
-    </section>
-  </article>`;
-}
-
 function renderAbilityDetail(pokemon: Mon[], id: string) {
-    const grid = document.querySelector<HTMLElement>("#grid");
+    const grid  = document.querySelector<HTMLElement>("#grid");
     const count = document.querySelector<HTMLElement>("#count");
     if (!grid || !count) return;
 
-    const info = ABIL[id];
+    const info  = ABIL[id];
     const title = info?.name || id;
 
-    // Equivalent to “querying by ability”: include mons where ability1/2 OR hidden matches this internal id
-    const list = pokemon.filter(p => (p.abilities?.includes(id)) || p.hiddenAbility === id)
+    // “Query by ability”: ability slot 1/2 or hidden matches
+    const list = pokemon
+        .filter(p => (p.abilities?.includes(id)) || p.hiddenAbility === id)
         .sort((a, b) => a.name.localeCompare(b.name));
 
-    count.textContent = `${list.length} result${list.length === 1 ? "" : "s"} for ability “${title}”`;
+    // Header: same pretty back button as Pokémon detail
+    count.innerHTML = `<button class="header-back" aria-label="Back to list">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")
+        ?.addEventListener("click", () => navigateToList());
 
     grid.innerHTML = `
   <article class="detail">
-    <button class="back" aria-label="Back to list">← Back</button>
     <h1 class="detail-name">${title}</h1>
 
     <section class="detail-block">
-      <h2>Description</h2>
       <p>${info?.description || "—"}</p>
     </section>
 
@@ -1025,12 +1364,9 @@ function renderAbilityDetail(pokemon: Mon[], id: string) {
     </section>
   </article>`;
 
-    grid.querySelector<HTMLButtonElement>(".back")?.addEventListener("click", () => navigateToList());
-
-    // Make the table use the same column sizing as the main page
+    // Make the table look/size like the main one
     wireIconFallbacks(grid);
     applyDexTableSizing(grid);
-
 }
 
 

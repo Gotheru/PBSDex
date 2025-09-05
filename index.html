@@ -317,6 +317,306 @@
             background:#0f1115; border-left:1px solid #2b3040; border-top:1px solid #2b3040;
         }
 
+        /* ===== Learnset (level-up moves) ===== */
+        .learnset { margin-top: 16px; }
+        .learnset-title { font-size: 16px; margin: 10px 0 8px; font-weight: 700; }
+        .empty-learnset { padding: 10px 12px; opacity: .7; }
+
+        /* Table shell (matches your aesthetic) */
+        .moves-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,.06);
+        }
+        .moves-table thead th {
+            position: sticky; top: 0;
+            background: #f3f4f6;
+            font-weight: 700;
+            z-index: 1;
+        }
+        .moves-table th, .moves-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+            vertical-align: middle;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Column sizing */
+        .moves-table th.lv, .moves-table td.lv { width: 64px; text-align: center; }
+        .moves-table th.mv-name, .moves-table td.mv-name { width: 220px; }
+        .moves-table th.mv-type, .moves-table td.mv-type { width: 64px; text-align: center; }
+        .moves-table th.mv-cat,  .moves-table td.mv-cat  { width: 64px; text-align: center; }
+        .moves-table th.mv-num,  .moves-table td.mv-num  { width: 72px; text-align: center; }
+        .moves-table th.mv-desc, .moves-table td.mv-desc { width: auto; }
+
+        /* Icons */
+        .moves-table .type-icon { width: 22px; height: 22px; image-rendering: pixelated; display: inline-block; }
+        .moves-table .cat-icon  { width: 44px; height: 22px; image-rendering: pixelated; display: inline-block; }
+
+        /* Zebra + hover */
+        .moves-table tbody tr:nth-child(odd) { background: #fafafa; }
+        .moves-table tbody tr:nth-child(even){ background: #ffffff; }
+        .moves-table tbody tr:hover { background: #ffeec2; transition: background 120ms ease-in-out; }
+
+        /* Dark theme */
+        [data-theme="dark"] .moves-table { background: #161a22; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+        [data-theme="dark"] .moves-table thead th { background: #1b2030; color: #e8ecf1; }
+        [data-theme="dark"] .moves-table th, [data-theme="dark"] .moves-table td { border-bottom: 1px solid #2b3040; color: #e8ecf1; }
+        [data-theme="dark"] .moves-table tbody tr:nth-child(odd) { background: #141824; }
+        [data-theme="dark"] .moves-table tbody tr:nth-child(even){ background: #111521; }
+        [data-theme="dark"] .moves-table tbody tr:hover { background: #24314a; }
+
+        /* === Learnset table column widths (more room for Description) === */
+        .moves-table th.lv, .moves-table td.lv { width: 50px; text-align: center; }
+
+        /* Move name narrower (was ~200+) */
+        .moves-table th.mv-name, .moves-table td.mv-name { width: 120px; }
+
+        /* Type icon: 22px icon, give some breathing room */
+        .moves-table th.mv-type, .moves-table td.mv-type { width: 48px; text-align: center; }
+
+        /* Category icons are 2:1 (you set 44px); keep centered */
+        .moves-table th.mv-cat, .moves-table td.mv-cat { width: 44px; text-align: center; }
+
+        /* Numbers a bit tighter */
+        .moves-table th.mv-num, .moves-table td.mv-num { width: 44px; text-align: center; }
+
+        /* Let Description take the rest */
+        .moves-table th.mv-desc, .moves-table td.mv-desc { width: auto; }
+
+
+        :root{
+            --bg: #f5f6f9;
+            --fg: #111;
+            --panel-bg: #fff;
+            --panel-border: #e5e7eb;
+            --panel-shadow: 0 6px 20px rgba(0,0,0,.06);
+            --panel-header-bg: #f3f4f6;
+        }
+
+        [data-theme="dark"]{
+            --bg: #0d1117;
+            --fg: #e6edf3;
+            --panel-bg: #161a22;
+            --panel-border: #2b3040;
+            --panel-shadow: 0 6px 20px rgba(0,0,0,.35);
+            --panel-header-bg: #1b2030;
+        }
+
+        body{ background: var(--bg); color: var(--fg); }
+
+        /* Top detail layout panels */
+        .art-box,
+        .info-tile,
+        .stats-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--panel-shadow);
+        }
+
+        /* Moves table uses the same palette */
+        .moves-table {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--panel-shadow);
+        }
+        .moves-table thead th{
+            background: var(--panel-header-bg);
+            color: var(--fg);
+        }
+
+        /* Row borders / text follow theme */
+        .moves-table th, .moves-table td { border-bottom: 1px solid var(--panel-border); color: var(--fg); }
+
+        /* Optional: zebra rows adjusted for both themes via mix with panel bg */
+        .moves-table tbody tr:nth-child(odd){ background: color-mix(in oklab, var(--panel-bg) 94%, #000 6%); }
+        .moves-table tbody tr:nth-child(even){ background: var(--panel-bg); }
+        [data-theme="dark"] .moves-table tbody tr:hover{ background: color-mix(in oklab, var(--panel-bg) 85%, #fff 15%); }
+
+
+        /* light theme (default) */
+        :root{ /* also applies to html/body unless overridden */
+            --bg: #f5f6f9;
+            --fg: #111;
+            --panel-bg: #fff;
+            --panel-border: #e5e7eb;
+            --panel-shadow: 0 6px 20px rgba(0,0,0,.06);
+            --panel-header-bg: #f3f4f6;
+        }
+
+        /* dark theme flag: supports html.dark OR body.dark OR [data-theme="dark"] */
+        html.dark, body.dark, [data-theme="dark"]{
+            --bg: #0d1117;
+            --fg: #e6edf3;
+            --panel-bg: #161a22;
+            --panel-border: #2b3040;
+            --panel-shadow: 0 6px 20px rgba(0,0,0,.35);
+            --panel-header-bg: #1b2030;
+        }
+
+        /* use the vars globally */
+        body{ background:var(--bg); color:var(--fg); }
+
+        /* panel theme */
+        .panel{ background:var(--panel-bg); border:1px solid var(--panel-border); box-shadow:var(--panel-shadow); border-radius:14px; }
+
+        /* === THEME VARS ======================================================= */
+        :root{
+            --bg:#f5f6f9; --fg:#111;
+            --panel-bg:#fff; --panel-border:#e5e7eb;
+            --panel-shadow:0 6px 20px rgba(0,0,0,.06);
+            --panel-header-bg:#f3f4f6;
+        }
+        html.dark, body.dark, [data-theme="dark"]{
+            --bg:#0d1117; --fg:#e6edf3;
+            --panel-bg:#161a22; --panel-border:#2b3040;
+            --panel-shadow:0 6px 20px rgba(0,0,0,.35);
+            --panel-header-bg:#1b2030;
+        }
+        body{ background:var(--bg); color:var(--fg); }
+
+        /* === FORCE PANELS TO THEME COLORS (high specificity + last) ========= */
+        .detail .mon-art .art-box,
+        .detail .mon-middle .info-tile,
+        .detail .mon-stats .stats-panel,
+        .panel {
+            background: var(--panel-bg) !important;
+            border: 1px solid var(--panel-border) !important;
+            box-shadow: var(--panel-shadow) !important;
+            border-radius: 14px !important;
+        }
+
+        /* Moves table on same palette */
+        .moves-table{
+            background: var(--panel-bg) !important;
+            border: 1px solid var(--panel-border) !important;
+            box-shadow: var(--panel-shadow) !important;
+        }
+        .moves-table thead th{ background: var(--panel-header-bg) !important; color: var(--fg) !important; }
+        .moves-table th, .moves-table td{ border-bottom: 1px solid var(--panel-border) !important; color: var(--fg) !important; }
+
+        /* Your chosen column widths */
+        .moves-table th.lv, .moves-table td.lv { width: 50px; text-align:center; }
+        .moves-table th.mv-name, .moves-table td.mv-name { width: 120px; }
+        .moves-table th.mv-type, .moves-table td.mv-type { width: 48px; text-align:center; }
+        .moves-table th.mv-cat,  .moves-table td.mv-cat  { width: 44px; text-align:center; }
+        .moves-table th.mv-num,  .moves-table td.mv-num  { width: 44px; text-align:center; }
+        .moves-table th.mv-desc, .moves-table td.mv-desc { width: auto; }
+
+        /* make the container card theme-aware instead of #fff */
+        .detail{
+            background: var(--panel-bg) !important;
+            border: 1px solid var(--panel-border) !important;
+            box-shadow: var(--panel-shadow) !important;
+            border-radius: 14px !important;
+        }
+
+        /* Extra breathing room for first column on non-level tables */
+        .moves-table.no-lv th.mv-name,
+        .moves-table.no-lv td.mv-name{
+            padding-left: 14px;
+        }
+
+        /* Move detail */
+        .move-detail .move-title{
+            display:flex; align-items:center; gap:10px;
+        }
+        .move-detail .move-title .move-name{
+            font-size:20px; margin:0;
+        }
+        .move-detail .move-header{ padding:14px 16px; margin-bottom:12px; }
+        .move-detail .move-kv{
+            display:grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px; margin-top: 10px;
+        }
+        .move-detail .move-kv > div{
+            display:flex; justify-content:space-between; align-items:center;
+            padding:8px 10px; border-radius:8px;
+            background: color-mix(in oklab, var(--panel-bg) 92%, #000 8%);
+        }
+        .move-detail .move-kv span{ opacity:.7; }
+
+        /* Flags list */
+        .flag-list{ margin: 6px 0 0 1.25rem; }
+        .flag-list li{ margin: 2px 0; }
+
+        /* Move links look like plain text */
+        a.move-link, a.move-link:visited{ color:inherit; text-decoration:none; }
+        a.move-link:hover{ text-decoration:none; }
+
+        /* Move detail header */
+        .move-detail .move-header { padding: 14px 16px; margin-bottom: 12px; }
+        .move-detail .move-name   { font-size: 26px; line-height: 1.2; margin: 0 0 10px; }
+
+        /* 3×2 info tiles — equal height and vertically centered */
+        .move-detail .move-kv{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .move-detail .move-kv > div{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;                   /* equal height across both rows */
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: color-mix(in oklab, var(--panel-bg) 92%, #000 8%);
+        }
+        .move-detail .move-kv span { opacity: .7; }
+
+        /* Bigger category icon in the header; centered vertically */
+        .move-detail .move-header .cat-icon { width: 56px; height: 28px; image-rendering: pixelated; display: block; }
+        .move-detail .move-header .type-icon{ width: 32px; height: 32px; image-rendering: pixelated; display: block; }
+
+        /* Move info panels: give the text more breathing room */
+        .move-detail .move-section { padding: 14px 16px; }
+        .move-detail .move-section p { margin: 0; }
+
+        /* Learners table: make sure it doesn’t overflow and uses main sizing */
+        .move-detail .move-learners .dex-table{
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        /* Move links look like plain text everywhere */
+        a.move-link, a.move-link:visited{ color: inherit; text-decoration: none; }
+        a.move-link:hover{ text-decoration: none; }
+
+        /* Tighter info panels under the header */
+        .move-detail .move-section{
+            padding: 10px 12px;   /* was ~14/16 */
+            margin-bottom: 10px;  /* a bit less gap between boxes */
+        }
+        .move-detail .move-section p{
+            margin: 0;
+            line-height: 1.3;     /* slightly tighter */
+        }
+
+        /* Flags list spacing */
+        .move-detail .flag-list{
+            margin: 6px 0 0 1.25rem; /* indent from left edge of panel */
+            padding: 0;
+        }
+        .move-detail .flag-list li{
+            margin: 2px 0;
+            list-style: disc;
+        }
+
+        /* tighter */
+        .move-detail .move-kv > div{
+            height: 52px;
+            padding: 8px 10px;
+        }
+
+
     </style>
 </head>
 <body>
