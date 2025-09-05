@@ -13,6 +13,40 @@ type Mon = {
     summary?: string;
     moves?: Move[];
 };
+type AbilityInfo = { name: string; description?: string };
+type AbilityMap = Record<string, AbilityInfo>;
+
+// --- Abilities ---
+
+let ABIL: AbilityMap = {}; // filled at startup
+
+async function loadAbilities(): Promise<AbilityMap> {
+    const url = new URL("./data/abilities.json", document.baseURI).toString();
+    const res = await fetch(url, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    return await res.json();
+}
+
+function abilityName(id?: string | null): string {
+    if (!id) return "";
+    return ABIL[id]?.name || id; // fallback to internal id if missing
+}
+
+function abilityLinkHTML(id?: string | null, opts?: { hidden?: boolean }) {
+    if (!id) return "";
+    const name = abilityName(id);
+    const a = `<a href="#/ability/${encodeURIComponent(id)}" class="abil-link">${name}</a>`;
+    return opts?.hidden ? `<em>${a}</em>` : a; // italicize hidden
+}
+
+function formatAbilities(abilities: string[], hidden?: string): string {
+    const parts: string[] = [];
+    if (abilities?.[0]) parts.push(abilityLinkHTML(abilities[0]));
+    if (abilities?.[1]) parts.push(abilityLinkHTML(abilities[1]));
+    if (hidden) parts.push(abilityLinkHTML(hidden, { hidden: true }));
+    return parts.length ? parts.join(" | ") : "—";
+}
+
 
 // --- stat bar helpers ---
 const STAT_MAX = 200; // scale: 0–100; values above 100 clamp to a full bar
@@ -32,15 +66,6 @@ function formatTyping(types: string[]): string {
     return t2 ? `${t1} | ${t2}` : t1;
 }
 
-function formatAbilities(abilities: string[], hidden?: string): string {
-    const parts: string[] = [];
-    if (abilities?.[0]) parts.push(abilities[0]);
-    if (abilities?.[1]) parts.push(abilities[1]);
-    if (hidden) parts.push(`<em>${hidden}</em>`);  // italic hidden
-    return parts.length ? parts.join(" | ") : "—";
-}
-
-
 const toArray = (x: unknown): string[] => {
     if (Array.isArray(x)) return x.filter(Boolean) as string[];
     if (typeof x === "string") return x.split(",").map(s => s.trim()).filter(Boolean);
@@ -55,6 +80,23 @@ const num = (x: unknown, d = 0): number => {
 
 const slugify = (s: string) =>
     (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+// ---------- more helpers ----------
+function applyDexTableSizing(container: HTMLElement) {
+    const table = container.querySelector<HTMLTableElement>(".dex-table");
+    if (!table) return;
+    const allDataJson = container.getAttribute("data-all-pokemon");
+    if (!allDataJson) return;
+    const allData: Mon[] = JSON.parse(allDataJson);
+    const widths = measureWidths(allData);
+    table.style.setProperty("--col-name", `${widths.name}px`);
+    table.style.setProperty("--col-type", `${widths.type}px`);
+    table.style.setProperty("--col-ability", `${widths.ability}px`);
+    table.style.setProperty("--col-hidden", `${widths.hidden}px`);
+    table.style.setProperty("--col-bst", `${widths.bst}px`);
+    table.style.setProperty("--col-stat", `${widths.stat}px`);
+}
+
 
 // ---------- normalize one entry ----------
 function normalizeEntry(e: any, idx: number): Mon {
@@ -129,11 +171,11 @@ function measureWidths(pokemon: Mon[]) {
     const maxType = Math.max(...[...typeStrings].map(w));
 
     const abilityStrings = new Set<string>(["Ability1", "Ability2"]);
-    pokemon.forEach(p => p.abilities.forEach(a => abilityStrings.add(a)));
+    pokemon.forEach(p => p.abilities.forEach(a => abilityStrings.add(abilityName(a))));
     const maxAbility = Math.max(...[...abilityStrings].map(w));
 
     const hiddenStrings = new Set<string>(["Hidden Ability"]);
-    pokemon.forEach(p => { if (p.hiddenAbility) hiddenStrings.add(p.hiddenAbility); });
+    pokemon.forEach(p => { if (p.hiddenAbility) hiddenStrings.add(abilityName(p.hiddenAbility)); });
     const maxHidden = Math.max(...[...hiddenStrings].map(w));
 
     const bstStrings = new Set<string>(["BST"]);
@@ -173,38 +215,38 @@ function buildTableHTML(list: Mon[]) {
       <th>Ability1</th>
       <th>Ability2</th>
       <th>Hidden Ability</th>
-      <th>BST</th>
       <th>HP</th>
       <th>Atk</th>
       <th>Def</th>
       <th>SpA</th>
       <th>SpD</th>
       <th>Spe</th>
+      <th>BST</th>
     </tr>
   </thead>
   <tbody>
     ${list.map(p => {
         const type1 = p.types[0] ?? "";
         const type2 = p.types[1] ?? "";
-        const ability1 = p.abilities[0] ?? "";
-        const ability2 = p.abilities[1] ?? "";
-        const hidden = p.hiddenAbility ?? "";
+        const ability1 = p.abilities[0] ? abilityLinkHTML(p.abilities[0]) : "";
+        const ability2 = p.abilities[1] ? abilityLinkHTML(p.abilities[1]) : "";
+        const hidden   = p.hiddenAbility ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : "";
         const sum = bst(p.stats);
         return `
       <tr class="rowlink" tabindex="0" data-id="${p.id}">
         <td title="${p.name}">${p.name}</td>
         <td title="${type1}">${type1}</td>
         <td title="${type2}">${type2}</td>
-        <td title="${ability1}">${ability1}</td>
-        <td title="${ability2}">${ability2}</td>
-        <td title="${hidden}">${hidden}</td>
-        <td>${sum}</td>
+        <td title="${abilityName(p.abilities[0])}">${ability1}</td>
+        <td title="${abilityName(p.abilities[1])}">${ability2}</td>
+        <td title="${abilityName(p.hiddenAbility)}">${hidden}</td>
         <td>${p.stats.hp}</td>
         <td>${p.stats.atk}</td>
         <td>${p.stats.def}</td>
         <td>${p.stats.spa}</td>
         <td>${p.stats.spd}</td>
         <td>${p.stats.spe}</td>
+        <td>${sum}</td>
       </tr>`;
     }).join("")}
   </tbody>
@@ -239,7 +281,9 @@ function renderTable(pokemon: Mon[]) {
     const list = pokemon
         .filter(p => {
             const inType = !typeFilter || p.types.includes(typeFilter);
-            const hay = (p.name + " " + p.types.join(" ") + " " + (p.abilities || []).join(" ")).toLowerCase();
+            const abilNames = (p.abilities || []).map(a => abilityName(a)).join(" ");
+            const hiddenName = abilityName(p.hiddenAbility);
+            const hay = (p.name + " " + p.types.join(" ") + " " + abilNames + " " + hiddenName).toLowerCase();
             return inType && (!query || hay.includes(query));
         })
         .sort((a, b) => {
@@ -253,20 +297,7 @@ function renderTable(pokemon: Mon[]) {
     grid.innerHTML = buildTableHTML(list);
 
     // set fixed widths based on the FULL dataset (stored on #grid)
-    const table = grid.querySelector<HTMLTableElement>(".dex-table");
-    if (table) {
-        const allDataJson = grid.getAttribute("data-all-pokemon");
-        if (allDataJson) {
-            const allData: Mon[] = JSON.parse(allDataJson);
-            const widths = measureWidths(allData);
-            table.style.setProperty("--col-name", `${widths.name}px`);
-            table.style.setProperty("--col-type", `${widths.type}px`);
-            table.style.setProperty("--col-ability", `${widths.ability}px`);
-            table.style.setProperty("--col-hidden", `${widths.hidden}px`);
-            table.style.setProperty("--col-bst", `${widths.bst}px`);
-            table.style.setProperty("--col-stat", `${widths.stat}px`);
-        }
-    }
+    applyDexTableSizing(grid);
 }
 
 /* ---------- detail rendering ---------- */
@@ -323,6 +354,21 @@ function renderDetail(pokemon: Mon[], id: string) {
 
 /* ---------- tiny hash router ---------- */
 
+type Route = { kind: "list" } | { kind: "mon"; id: string } | { kind: "ability"; id: string };
+
+function parseHash(): Route {
+    const h = location.hash;
+    let m = h.match(/^#\/mon\/(.+)$/);
+    if (m) return { kind: "mon", id: decodeURIComponent(m[1]) };
+    m = h.match(/^#\/ability\/(.+)$/);
+    if (m) return { kind: "ability", id: decodeURIComponent(m[1]) };
+    return { kind: "list" };
+}
+
+function navigateToAbility(id: string) {
+    location.hash = `#/ability/${encodeURIComponent(id)}`;
+}
+
 function hashToId(): string | null {
     const m = location.hash.match(/^#\/mon\/(.+)$/);
     return m ? decodeURIComponent(m[1]) : null;
@@ -340,21 +386,27 @@ function renderCurrent() {
     const allDataJson = grid.getAttribute("data-all-pokemon");
     if (!allDataJson) return;
     const pokemon: Mon[] = JSON.parse(allDataJson);
-    const id = hashToId();
-    if (id) renderDetail(pokemon, id);
+    const r = parseHash();
+    if (r.kind === "mon") renderDetail(pokemon, r.id);
+    else if (r.kind === "ability") renderAbilityDetail(pokemon, r.id);
     else renderTable(pokemon);
 }
+
 
 /* ---------- start ---------- */
 
 async function start() {
-    const pokemon = await loadData();
+    const [abilities, pokemon] = await Promise.all([
+        loadAbilities(),
+        loadData(),
+    ]);
+    ABIL = abilities;
+
     buildFilters(pokemon);
 
     const grid = document.querySelector<HTMLElement>("#grid");
     if (grid) grid.setAttribute("data-all-pokemon", JSON.stringify(pokemon));
 
-    // list interactions
     const q = document.querySelector<HTMLInputElement>("#q");
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
     const sortSel = document.querySelector<HTMLSelectElement>("#sort");
@@ -363,14 +415,17 @@ async function start() {
     typeSel?.addEventListener("change", rerender);
     sortSel?.addEventListener("change", rerender);
 
-    // click/keyboard on rows → navigate to detail
     grid?.addEventListener("click", (e) => {
-        const tr = (e.target as HTMLElement).closest<HTMLTableRowElement>("tr.rowlink");
+        const target = e.target as HTMLElement;
+        if (target.closest("a")) return; // let ability links navigate
+        const tr = target.closest<HTMLTableRowElement>("tr.rowlink");
         if (tr?.dataset.id) navigateToMon(tr.dataset.id);
     });
     grid?.addEventListener("keydown", (e: KeyboardEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("a")) return; // don't hijack Enter on a link
         if (e.key === "Enter" || e.key === " ") {
-            const tr = (e.target as HTMLElement).closest<HTMLTableRowElement>("tr.rowlink");
+            const tr = target.closest<HTMLTableRowElement>("tr.rowlink");
             if (tr?.dataset.id) {
                 e.preventDefault();
                 navigateToMon(tr.dataset.id);
@@ -378,11 +433,88 @@ async function start() {
         }
     });
 
-    window.addEventListener("hashchange", renderCurrent);
 
-    // initial render based on hash
-    renderCurrent();
+    window.addEventListener("hashchange", renderCurrent);
+    renderCurrent(); // first render now sees ABIL, so names show up everywhere
 }
+
+function buildAbilityDetailHTML(abilityId: string, pokemon: Mon[]) {
+    const info = ABIL[abilityId];
+    const title = info?.name || abilityId;
+
+    const normal = pokemon.filter(p => (p.abilities || []).includes(abilityId))
+        .sort((a,b) => a.name.localeCompare(b.name));
+    const hidden = pokemon.filter(p => p.hiddenAbility === abilityId)
+        .sort((a,b) => a.name.localeCompare(b.name));
+
+    const list = (arr: Mon[]) => arr.map(p => `<li><a href="#/mon/${encodeURIComponent(p.id)}">${p.name}</a></li>`).join("");
+
+    return `
+  <article class="detail">
+    <button class="back" aria-label="Back to list">← Back</button>
+    <h1 class="detail-name">${title}</h1>
+
+    <section class="detail-block">
+      <h2>Description</h2>
+      <p>${info?.description || "—"}</p>
+    </section>
+
+    <section class="detail-block">
+      <h2>Pokémon with this ability</h2>
+
+      <div class="kv" style="margin-bottom:6px;"><div><span>Regular</span><strong>${normal.length}</strong></div><div><span>Hidden</span><strong>${hidden.length}</strong></div></div>
+
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px;">
+        <div>
+          <h3 style="font-size:14px; opacity:.75; margin:0 0 6px;">Regular Ability</h3>
+          <ul class="list">${list(normal) || "<li>—</li>"}</ul>
+        </div>
+        <div>
+          <h3 style="font-size:14px; opacity:.75; margin:0 0 6px;">Hidden Ability</h3>
+          <ul class="list">${list(hidden) || "<li>—</li>"}</ul>
+        </div>
+      </div>
+    </section>
+  </article>`;
+}
+
+function renderAbilityDetail(pokemon: Mon[], id: string) {
+    const grid = document.querySelector<HTMLElement>("#grid");
+    const count = document.querySelector<HTMLElement>("#count");
+    if (!grid || !count) return;
+
+    const info = ABIL[id];
+    const title = info?.name || id;
+
+    // Equivalent to “querying by ability”: include mons where ability1/2 OR hidden matches this internal id
+    const list = pokemon.filter(p => (p.abilities?.includes(id)) || p.hiddenAbility === id)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    count.textContent = `${list.length} result${list.length === 1 ? "" : "s"} for ability “${title}”`;
+
+    grid.innerHTML = `
+  <article class="detail">
+    <button class="back" aria-label="Back to list">← Back</button>
+    <h1 class="detail-name">${title}</h1>
+
+    <section class="detail-block">
+      <h2>Description</h2>
+      <p>${info?.description || "—"}</p>
+    </section>
+
+    <section class="detail-block">
+      <h2>Pokémon</h2>
+      ${buildTableHTML(list)}
+    </section>
+  </article>`;
+
+    grid.querySelector<HTMLButtonElement>(".back")?.addEventListener("click", () => navigateToList());
+
+    // Make the table use the same column sizing as the main page
+    applyDexTableSizing(grid);
+}
+
+
 
 // Run in the browser after DOM is ready
 if (typeof document !== "undefined") {

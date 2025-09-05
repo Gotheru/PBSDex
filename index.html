@@ -26,18 +26,36 @@
         .dex-table tbody tr:nth-child(odd) { background: #fafafa; }
         .dex-table tbody tr:nth-child(even) { background: #ffffff; }
         .dex-table tbody tr:hover { background: #ffeec2; transition: background 120ms ease-in-out; }
+        /* fixed widths (BST moved to last col = 13) */
         .dex-table th:nth-child(1), .dex-table td:nth-child(1) { width: var(--col-name); }
         .dex-table th:nth-child(2), .dex-table td:nth-child(2),
         .dex-table th:nth-child(3), .dex-table td:nth-child(3) { width: var(--col-type); }
         .dex-table th:nth-child(4), .dex-table td:nth-child(4),
         .dex-table th:nth-child(5), .dex-table td:nth-child(5) { width: var(--col-ability); }
         .dex-table th:nth-child(6), .dex-table td:nth-child(6) { width: var(--col-hidden); }
-        .dex-table th:nth-child(7), .dex-table td:nth-child(7) { width: var(--col-bst); }
-        .dex-table th:nth-child(n+8), .dex-table td:nth-child(n+8) { width: var(--col-stat); }
+        /* stats now start at col 7 */
+        .dex-table th:nth-child(n+7), .dex-table td:nth-child(n+7) { width: var(--col-stat); }
+        /* override last col for BST */
+        .dex-table th:nth-child(13), .dex-table td:nth-child(13) { width: var(--col-bst); }
+
+        /* center Types + BST + all stats (7..12) */
         .dex-table th:nth-child(2), .dex-table td:nth-child(2),
         .dex-table th:nth-child(3), .dex-table td:nth-child(3),
         .dex-table th:nth-child(7), .dex-table td:nth-child(7),
-        .dex-table th:nth-child(n+8), .dex-table td:nth-child(n+8) { text-align: center; }
+        .dex-table th:nth-child(8), .dex-table td:nth-child(8),
+        .dex-table th:nth-child(9), .dex-table td:nth-child(9),
+        .dex-table th:nth-child(10), .dex-table td:nth-child(10),
+        .dex-table th:nth-child(11), .dex-table td:nth-child(11),
+        .dex-table th:nth-child(12), .dex-table td:nth-child(12),
+        .dex-table th:nth-child(13), .dex-table td:nth-child(13) {
+            text-align: center;
+        }
+
+        /* optional: links inside table + lists in ability page */
+        .dex-table a { color: inherit; text-decoration: underline; }
+        ul.list { margin: 0; padding-left: 18px; }
+        ul.list li { margin: 4px 0; }
+
         .rowlink { cursor: pointer; }
         .rowlink:focus { outline: 2px solid #93c5fd; outline-offset: -2px; }
         .detail { background: #fff; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.06); padding: 16px; min-height: 240px; }

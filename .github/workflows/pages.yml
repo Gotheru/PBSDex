@@ -25,6 +25,7 @@ jobs:
       - run: npm ci || npm install
       # Generate your JSON if needed
       - run: python3 scripts/pokemon_to_json.py public/data/pokemon.txt public/data/pokemon.json --forms public/data/pokemon_forms.txt
+      - run: python3 scripts/abilities_to_json.py public/data/abilities.txt public/data/abilities.json
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
