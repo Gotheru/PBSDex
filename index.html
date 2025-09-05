@@ -281,6 +281,310 @@
         th.sortable { cursor: pointer; user-select: none; }
         th.sortable .sort-arrow { opacity: .75; font-size: 12px; margin-left: 4px; }
 
+        /* icon cell */
+        .dex-table td.icon { text-align: center; }
+        /* show only the left 64x64 of 128x64 sprites */
+        .dex-icon {
+            width: 32px;              /* or 32px if you want bigger */
+            height: 32px;
+            object-fit: cover;        /* crop to square */
+            object-position: left center; /* keep the LEFT half */
+            image-rendering: pixelated;
+            display: block;
+        }
+
+        /* We add --col-icon and shift everything by +1 index. Total columns = 14 (BST is last) */
+        .dex-table {
+            --col-icon: 44px;   /* new */
+            /* existing: --col-name, --col-type, --col-ability, --col-hidden, --col-bst, --col-stat */
+        }
+
+        /* fixed widths */
+        .dex-table th:nth-child(1),  .dex-table td:nth-child(1)  { width: var(--col-icon); }   /* icon */
+        .dex-table th:nth-child(2),  .dex-table td:nth-child(2)  { width: var(--col-name); }   /* name */
+        .dex-table th:nth-child(3),  .dex-table td:nth-child(3),
+        .dex-table th:nth-child(4),  .dex-table td:nth-child(4)  { width: var(--col-type); }   /* type1/2 */
+        .dex-table th:nth-child(5),  .dex-table td:nth-child(5),
+        .dex-table th:nth-child(6),  .dex-table td:nth-child(6)  { width: var(--col-ability); }/* ability1/2 */
+        .dex-table th:nth-child(7),  .dex-table td:nth-child(7)  { width: var(--col-hidden); } /* hidden */
+        /* stats now start at col 8 and run through col 13 */
+        .dex-table th:nth-child(n+8):not(:nth-child(14)),
+        .dex-table td:nth-child(n+8):not(:nth-child(14)) { width: var(--col-stat); }
+        /* last col (14) is BST */
+        .dex-table th:nth-child(14), .dex-table td:nth-child(14) { width: var(--col-bst); }
+
+        /* center Types + icon + all stat columns + BST */
+        .dex-table th:nth-child(1),  .dex-table td:nth-child(1),
+        .dex-table th:nth-child(3),  .dex-table td:nth-child(3),
+        .dex-table th:nth-child(4),  .dex-table td:nth-child(4),
+        .dex-table th:nth-child(8),  .dex-table td:nth-child(8),
+        .dex-table th:nth-child(9),  .dex-table td:nth-child(9),
+        .dex-table th:nth-child(10), .dex-table td:nth-child(10),
+        .dex-table th:nth-child(11), .dex-table td:nth-child(11),
+        .dex-table th:nth-child(12), .dex-table td:nth-child(12),
+        .dex-table th:nth-child(13), .dex-table td:nth-child(13),
+        .dex-table th:nth-child(14), .dex-table td:nth-child(14) {
+            text-align: center;
+        }
+        /* 3-column detail layout */
+        .mon-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 420px; /* art | info | stats */
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* Artwork box */
+        .art-box {
+            width: 288px;   /* 96 * 3 = 288 */
+            height: 288px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mon-front {
+            width: 288px;
+            height: 288px;
+            image-rendering: pixelated;  /* keep the pixels */
+            object-fit: contain;         /* don't stretch */
+            display: block;
+        }
+
+        [data-theme="dark"] .art-box {
+            background: #161a22;
+            border-color: #2b3040;
+            box-shadow: 0 6px 20px rgba(0,0,0,.35);
+        }
+
+        /* Middle info column */
+        .kv-tight > div { padding: 10px 12px; } /* a little larger tiles */
+
+        /* Right stats column: make it narrower so bars fit comfortably */
+        .mon-stats { max-width: 360px; }
+        .mon-stats .stats { width: 100%; }
+        .mon-stats .stats td.label { width: 72px; }
+        .mon-stats .stats td.num   { width: 52px; }
+        .mon-stats .stats td.bar   { width: auto; }
+
+        /* Responsive stacking */
+        @media (max-width: 1100px) {
+            .mon-layout { grid-template-columns: 260px 1fr; }
+            .mon-stats { grid-column: 1 / -1; max-width: 100%; }
+            .art-box { width: 260px; height: 260px; }
+            .mon-front { width: 260px; height: 260px; }
+        }
+        @media (max-width: 720px) {
+            .mon-layout { grid-template-columns: 1fr; }
+            .art-box { width: 240px; height: 240px; margin: 0 auto; }
+            .mon-front { width: 240px; height: 240px; }
+        }
+
+        /* --- 3-column layout --- */
+        .mon-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 460px; /* art | middle | stats */
+            gap: 24px;
+            align-items: start;
+            position: relative;
+        }
+
+        /* Back button stays like before (you already have .detail .back styles) */
+
+        /* --- Art --- */
+        .art-box {
+            width: 288px;  height: 288px;             /* 96*3, crisp pixels */
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.08);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mon-front { width: 288px; height: 288px; image-rendering: pixelated; object-fit: contain; display: block; }
+        [data-theme="dark"] .art-box { background: #161a22; border-color: #2b3040; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+
+        /* --- Middle column: two tiles stacked, values centered & stacked lines --- */
+        .mon-middle { display: grid; gap: 16px; align-content: center; }
+        .info-tile {
+            background: #f5f6f8;
+            border-radius: 14px;
+            padding: 16px 18px;
+            display: grid;
+            grid-template-columns: 120px 1fr; /* label | value */
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 1px 0 rgba(0,0,0,.05);
+        }
+        .info-label { color: #555; font-weight: 500; }
+        .info-value.stacked { display: grid; gap: 6px; }
+        .info-value.center { justify-items: center; text-align: center; }
+        .info-value .line em { font-style: italic; }
+
+        [data-theme="dark"] .info-tile {
+            background: #141824;
+            box-shadow: none;
+        }
+
+        /* --- Stats column: centered vertically in its own panel --- */
+        .mon-stats { align-self: stretch; display: flex; }
+        .stats-panel {
+            background: #f5f6f8;
+            border-radius: 14px;
+            padding: 14px 16px;
+            width: 100%;
+            max-width: 460px;
+            margin-left: auto;
+            display: flex;
+            align-items: center;     /* center the table vertically within the panel */
+        }
+        [data-theme="dark"] .stats-panel { background: #141824; }
+
+        /* table sizing inside the stats panel */
+        .mon-stats .stats { width: 100%; }
+        .mon-stats .stats td.label { width: 72px; }
+        .mon-stats .stats td.num   { width: 52px; }
+        .mon-stats .stats td.bar   { width: auto; }
+
+        /* --- Responsive --- */
+        @media (max-width: 1200px) {
+            .mon-layout { grid-template-columns: 300px 1fr 420px; }
+            .stats-panel { max-width: 420px; }
+        }
+        @media (max-width: 980px) {
+            .mon-layout { grid-template-columns: 260px 1fr; }
+            .mon-stats { grid-column: 1 / -1; }
+            .stats-panel { max-width: 100%; }
+            .art-box { width: 260px; height: 260px; }
+            .mon-front { width: 260px; height: 260px; }
+        }
+        @media (max-width: 720px) {
+            .mon-layout { grid-template-columns: 1fr; }
+            .art-box { width: 240px; height: 240px; margin: 0 auto; }
+            .mon-front { width: 240px; height: 240px; }
+            .info-tile { grid-template-columns: 1fr; text-align: center; }
+            .info-label { justify-self: center; }
+        }
+        /* Middle tiles: bold values; hidden stays italic (and bold due to parent weight) */
+        .info-value.stacked .line { font-weight: 700; }
+        .info-value .line em { font-style: italic; }
+
+        /* Header Back button (lives inside #count) */
+        #count .header-back {
+            appearance: none;
+            border: 1px solid #ddd;
+            background: #f8fafc;
+            color: inherit;
+            padding: 6px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 1px 0 rgba(0,0,0,.06);
+            opacity: 1;          /* don’t inherit the #count lower opacity */
+        }
+        #count .header-back:hover { filter: brightness(0.98); }
+        #count .header-back:focus { outline: 2px solid #93c5fd; outline-offset: 2px; }
+        [data-theme="dark"] #count .header-back {
+            background: #121723;
+            border-color: #2b3040;
+            box-shadow: none;
+        }
+        [data-theme="dark"] #count .header-back:focus { outline-color: #60a5fa; }
+
+        /* --- 3-column detail layout (centered, proportional gaps) --- */
+        .mon-layout {
+            display: grid;
+            grid-template-columns: auto auto auto; /* each column sizes to its content */
+            column-gap: 32px;                      /* equal spacing between columns */
+            row-gap: 16px;
+            justify-content: center;               /* center the whole group horizontally */
+            align-items: center;                   /* vertically center each column to tallest */
+            position: relative;
+        }
+
+        /* Left: art */
+        .mon-art { justify-self: center; }
+        .art-box {
+            width: 288px;  /* 96*3 */
+            height: 288px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.08);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0;                           /* remove any implicit gap inflation */
+        }
+        .mon-front { width: 288px; height: 288px; image-rendering: pixelated; object-fit: contain; display: block; }
+        [data-theme="dark"] .art-box { background: #161a22; border-color: #2b3040; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+
+        /* Middle: typing & abilities (stacked, centered) */
+        .mon-middle {
+            width: 360px;                         /* fixed visual width for nice balance */
+            display: grid;
+            gap: 16px;
+            align-items: center;                  /* vertical center within the column */
+            justify-items: center;                /* horizontal center the tiles */
+        }
+        .info-tile {
+            width: 100%;
+            background: #f5f6f8;
+            border-radius: 14px;
+            padding: 16px 18px;
+            display: grid;
+            grid-template-columns: 120px 1fr;     /* label | value */
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 1px 0 rgba(0,0,0,.05);
+        }
+        .info-label { color: #555; font-weight: 500; }
+        .info-value.stacked { display: grid; gap: 6px; }
+        .info-value.center { justify-items: center; text-align: center; }
+        .info-value.stacked .line { font-weight: 700; } /* bold values */
+        .info-value .line em { font-style: italic; }
+
+        [data-theme="dark"] .info-tile { background: #141824; box-shadow: none; }
+
+        /* Right: stats (panel centered; table centered vertically) */
+        .mon-stats { justify-self: center; display: flex; }
+        .stats-panel {
+            width: 420px;                         /* fixed visual width */
+            max-width: 420px;
+            margin: 0;                            /* remove old margin-left:auto */
+            background: #f5f6f8;
+            border-radius: 14px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;                  /* center table vertically in the card */
+            justify-content: center;              /* center content horizontally */
+        }
+        [data-theme="dark"] .stats-panel { background: #141824; }
+
+        /* Table sizing inside the stats panel */
+        .mon-stats .stats { width: 100%; }
+        .mon-stats .stats td.label { width: 72px; }
+        .mon-stats .stats td.num   { width: 52px; }
+        .mon-stats .stats td.bar   { width: auto; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .mon-middle { width: 320px; }
+            .stats-panel { width: 380px; max-width: 380px; }
+        }
+        @media (max-width: 980px) {
+            .mon-layout { grid-template-columns: auto auto; }
+            .mon-stats { grid-column: 1 / -1; justify-content: center; }
+        }
+        @media (max-width: 720px) {
+            .mon-layout { grid-template-columns: 1fr; }
+            .art-box { width: 240px; height: 240px; margin: 0 auto; }
+            .mon-front { width: 240px; height: 240px; }
+            .mon-middle, .stats-panel { width: 100%; max-width: 520px; }
+            .info-tile { grid-template-columns: 1fr; text-align: center; }
+            .info-label { justify-self: center; }
+        }
+
+
 
     </style>
 </head>

@@ -105,6 +105,62 @@ const slugify = (s: string) =>
     (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 // ---------- more helpers ----------
+// Front sprites live in /images/front/<INTERNAL>.png (96x96)
+function frontCandidates(p: Mon): string[] {
+    const base = new URL("./images/front/", document.baseURI).toString();
+    const names = [
+        p.internalName,                  // e.g. BEEDRILLT
+        p.internalName.toLowerCase(),    // beedrillt
+        p.id,                            // beedrillt
+        p.id.toUpperCase(),              // BEEDRILLT
+    ];
+    const exts = ["png", "PNG"];
+    const seen = new Set<string>();
+    const urls: string[] = [];
+    for (const n of names) for (const ext of exts) {
+        const u = base + encodeURIComponent(n) + "." + ext;
+        if (!seen.has(u)) { urls.push(u); seen.add(u); }
+    }
+    return urls;
+}
+
+// Generic error fallback for any <img> with data-srcs + data-idx
+function wireFallbacks(root: HTMLElement, selector: string) {
+    root.querySelectorAll<HTMLImageElement>(selector).forEach(img => {
+        const srcs = (img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
+        if (srcs.length <= 1) return;
+        img.addEventListener("error", () => {
+            let i = Number(img.dataset.idx || "0");
+            i += 1;
+            if (i < srcs.length) {
+                img.dataset.idx = String(i);
+                img.src = srcs[i];
+            } else {
+                img.style.visibility = "hidden";
+            }
+        });
+    });
+}
+
+function wireIconFallbacks(root: HTMLElement) {
+    root.querySelectorAll<HTMLImageElement>("img.dex-icon").forEach(img => {
+        const srcs = (img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
+        if (srcs.length <= 1) return;
+
+        img.addEventListener("error", () => {
+            let i = Number(img.dataset.idx || "0");
+            i += 1;
+            if (i < srcs.length) {
+                img.dataset.idx = String(i);
+                img.src = srcs[i];
+            } else {
+                img.style.visibility = "hidden"; // no valid sources; hide the broken icon
+            }
+        });
+    });
+}
+
+
 function applyDexTableSizing(container: HTMLElement) {
     const table = container.querySelector<HTMLTableElement>(".dex-table");
     if (!table) return;
@@ -112,6 +168,7 @@ function applyDexTableSizing(container: HTMLElement) {
     if (!allDataJson) return;
     const allData: Mon[] = JSON.parse(allDataJson);
     const widths = measureWidths(allData);
+    table.style.setProperty("--col-icon", `44px`); // NEW: fixed icon width
     table.style.setProperty("--col-name", `${widths.name}px`);
     table.style.setProperty("--col-type", `${widths.type}px`);
     table.style.setProperty("--col-ability", `${widths.ability}px`);
@@ -119,6 +176,7 @@ function applyDexTableSizing(container: HTMLElement) {
     table.style.setProperty("--col-bst", `${widths.bst}px`);
     table.style.setProperty("--col-stat", `${widths.stat}px`);
 }
+
 
 function ensureTooltip(): HTMLElement {
     let el = document.getElementById("tooltip");
@@ -129,6 +187,35 @@ function ensureTooltip(): HTMLElement {
     }
     return el;
 }
+
+function iconUrl(internalName: string): string {
+    // public/images/icons/<InternalName>.png
+    // document.baseURI keeps it working at /PBSDex/ in prod and / in dev
+    return new URL(`./images/icons/${encodeURIComponent(internalName)}.png`, document.baseURI).toString();
+}
+
+function iconCandidates(p: Mon): string[] {
+    const base = new URL("./images/icons/", document.baseURI).toString();
+    const names = [
+        p.internalName,                  // e.g. BEEDRILLT
+        p.internalName.toLowerCase(),    // beedrillt
+        p.id,                            // beedrillt (slug)
+        p.id.toUpperCase(),              // BEEDRILLT
+    ];
+    const exts = ["png", "PNG"];       // try both cases
+    const seen = new Set<string>();
+    const urls: string[] = [];
+
+    for (const n of names) {
+        for (const ext of exts) {
+            const u = base + encodeURIComponent(n) + "." + ext;
+            if (!seen.has(u)) { urls.push(u); seen.add(u); }
+        }
+    }
+    return urls;
+}
+
+
 
 const TOOLTIP_MARGIN = 8;
 
@@ -397,7 +484,6 @@ function cmp(a: Mon, b: Mon, key: SortKey, dir: SortDir): number {
 function buildTableHTML(list: Mon[]) {
     const arrow = (key: SortKey) =>
         sortState.key === key ? `<span class="sort-arrow">${sortState.dir === "asc" ? "▲" : "▼"}</span>` : "";
-
     const th = (label: string, key: SortKey) =>
         `<th data-sort="${key}" tabindex="0" class="sortable">${label} ${arrow(key)}</th>`;
 
@@ -405,6 +491,7 @@ function buildTableHTML(list: Mon[]) {
 <table class="dex-table">
   <thead>
     <tr>
+      <th class="icon-col" aria-label="Sprite"></th>
       ${th("Name", "name")}
       ${th("Type1", "type1")}
       ${th("Type2", "type2")}
@@ -428,8 +515,21 @@ function buildTableHTML(list: Mon[]) {
         const ability2 = p.abilities[1] ? abilityLinkHTML(p.abilities[1]) : "";
         const hidden   = p.hiddenAbility ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : "";
         const sum = bst(p.stats);
+
+        const srcs = iconCandidates(p);
+        const icon = `
+        <img class="dex-icon"
+             src="${srcs[0]}"
+             data-srcs="${srcs.join('|')}"
+             data-idx="0"
+             alt=""
+             loading="lazy"
+             decoding="async">
+      `;
+
         return `
       <tr class="rowlink" tabindex="0" data-id="${p.id}">
+        <td class="icon">${icon}</td>
         <td title="${p.name}">${p.name}</td>
         <td title="${type1}">${type1}</td>
         <td title="${type2}">${type2}</td>
@@ -448,6 +548,8 @@ function buildTableHTML(list: Mon[]) {
   </tbody>
 </table>`;
 }
+
+
 
 
 function buildFilters(pokemon: Mon[]) {
@@ -488,6 +590,8 @@ function renderTable(pokemon: Mon[]) {
     count.textContent = `${list.length} result${list.length === 1 ? "" : "s"}`;
 
     grid.innerHTML = buildTableHTML(list);
+    wireIconFallbacks(grid);
+
 
     // header click & keyboard sort
     const head = grid.querySelector("thead");
@@ -532,54 +636,91 @@ function renderTable(pokemon: Mon[]) {
 /* ---------- detail rendering ---------- */
 
 function buildDetailHTML(p: Mon) {
-    const typingStr = formatTyping(p.types);
-    const abilitiesStr = formatAbilities(p.abilities, p.hiddenAbility);
+    // middle tiles: stacked lines
+    const typingLines = (p.types && p.types.length)
+        ? p.types.map(t => `<div class="line">${t}</div>`).join("")
+        : `<div class="line">—</div>`;
+
+    const abilityLines = [
+        p.abilities?.[0] ? abilityLinkHTML(p.abilities[0]) : "",
+        p.abilities?.[1] ? abilityLinkHTML(p.abilities[1]) : "",
+        p.hiddenAbility   ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : "",
+    ].filter(Boolean).map(html => `<div class="line">${html}</div>`).join("");
+
+    const srcs = frontCandidates(p);
+    const img = `
+    <img class="mon-front"
+         src="${srcs[0]}"
+         data-srcs="${srcs.join('|')}"
+         data-idx="0"
+         alt="${p.name}"
+         loading="lazy"
+         decoding="async">
+  `;
 
     return `
-  <article class="detail">
-    <button class="back" aria-label="Back to list">← Back</button>
-    <h1 class="detail-name">${p.name}</h1>
+  <article class="detail mon-layout">
 
-    <section class="detail-block">
-      <h2>Info</h2>
-      <div class="kv">
-        <div><span>Typing</span><strong>${typingStr}</strong></div>
-        <div><span>Abilities</span><strong>${abilitiesStr}</strong></div>
+    <div class="mon-art">
+      <div class="art-box">${img}</div>
+    </div>
+
+    <div class="mon-middle">
+      <div class="info-tile">
+        <div class="info-label">Typing</div>
+        <div class="info-value stacked center">${typingLines}</div>
       </div>
-    </section>
 
-    <section class="detail-block">
-      <h2>Base Stats</h2>
-      <table class="stats">
-        <tbody>
-          <tr><td class="label">HP</td>   <td class="num">${p.stats.hp}</td>  <td class="bar">${statBarHTML(p.stats.hp)}</td></tr>
-          <tr><td class="label">Atk</td>  <td class="num">${p.stats.atk}</td> <td class="bar">${statBarHTML(p.stats.atk)}</td></tr>
-          <tr><td class="label">Def</td>  <td class="num">${p.stats.def}</td> <td class="bar">${statBarHTML(p.stats.def)}</td></tr>
-          <tr><td class="label">SpA</td>  <td class="num">${p.stats.spa}</td> <td class="bar">${statBarHTML(p.stats.spa)}</td></tr>
-          <tr><td class="label">SpD</td>  <td class="num">${p.stats.spd}</td> <td class="bar">${statBarHTML(p.stats.spd)}</td></tr>
-          <tr><td class="label">Spe</td>  <td class="num">${p.stats.spe}</td> <td class="bar">${statBarHTML(p.stats.spe)}</td></tr>
-          <tr class="bst"><td class="label">BST</td><td class="num">${bst(p.stats)}</td><td class="bar"></td></tr>
-        </tbody>
-      </table>
-    </section>
+      <div class="info-tile">
+        <div class="info-label">Abilities</div>
+        <div class="info-value stacked center">${abilityLines}</div>
+      </div>
+    </div>
+
+    <div class="mon-stats">
+      <div class="stats-panel">
+        <table class="stats">
+          <tbody>
+            <tr><td class="label">HP</td>   <td class="num">${p.stats.hp}</td>  <td class="bar">${statBarHTML(p.stats.hp)}</td></tr>
+            <tr><td class="label">Atk</td>  <td class="num">${p.stats.atk}</td> <td class="bar">${statBarHTML(p.stats.atk)}</td></tr>
+            <tr><td class="label">Def</td>  <td class="num">${p.stats.def}</td> <td class="bar">${statBarHTML(p.stats.def)}</td></tr>
+            <tr><td class="label">SpA</td>  <td class="num">${p.stats.spa}</td> <td class="bar">${statBarHTML(p.stats.spa)}</td></tr>
+            <tr><td class="label">SpD</td>  <td class="num">${p.stats.spd}</td> <td class="bar">${statBarHTML(p.stats.spd)}</td></tr>
+            <tr><td class="label">Spe</td>  <td class="num">${p.stats.spe}</td> <td class="bar">${statBarHTML(p.stats.spe)}</td></tr>
+            <tr class="bst"><td class="label">BST</td><td class="num">${bst(p.stats)}</td><td class="bar"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </article>`;
 }
 
+
+
 function renderDetail(pokemon: Mon[], id: string) {
-    const grid = document.querySelector<HTMLElement>("#grid");
+    const grid  = document.querySelector<HTMLElement>("#grid");
     const count = document.querySelector<HTMLElement>("#count");
     if (!grid || !count) return;
+
     const mon = pokemon.find(m => m.id === id);
     if (!mon) {
+        count.innerHTML = "";
         grid.innerHTML = `<div style="padding:16px;">Not found.</div>`;
         return;
     }
-    count.textContent = "Details";
+
+    // Put the Back button where “Details” used to be
+    count.innerHTML = `<button class="back header-back" aria-label="Back to list">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")
+        ?.addEventListener("click", () => navigateToList());
+
+    // Build the card WITHOUT an internal back button
     grid.innerHTML = buildDetailHTML(mon);
 
-    const backBtn = grid.querySelector<HTMLButtonElement>(".back");
-    backBtn?.addEventListener("click", () => navigateToList());
+    // sprite fallback
+    wireFallbacks(grid, "img.mon-front");
 }
+
 
 /* ---------- tiny hash router ---------- */
 
@@ -681,8 +822,6 @@ function buildAbilityDetailHTML(abilityId: string, pokemon: Mon[]) {
 
     return `
   <article class="detail">
-    <button class="back" aria-label="Back to list">← Back</button>
-    <h1 class="detail-name">${title}</h1>
 
     <section class="detail-block">
       <h2>Description</h2>
@@ -741,7 +880,9 @@ function renderAbilityDetail(pokemon: Mon[], id: string) {
     grid.querySelector<HTMLButtonElement>(".back")?.addEventListener("click", () => navigateToList());
 
     // Make the table use the same column sizing as the main page
+    wireIconFallbacks(grid);
     applyDexTableSizing(grid);
+
 }
 
 
