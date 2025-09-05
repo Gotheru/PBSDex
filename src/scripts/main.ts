@@ -32,12 +32,23 @@ function abilityName(id?: string | null): string {
     return ABIL[id]?.name || id; // fallback to internal id if missing
 }
 
+function escapeAttr(s: string) {
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\s+/g, " "); // collapse newlines/extra spaces
+}
+
 function abilityLinkHTML(id?: string | null, opts?: { hidden?: boolean }) {
     if (!id) return "";
     const name = abilityName(id);
-    const a = `<a href="#/ability/${encodeURIComponent(id)}" class="abil-link">${name}</a>`;
-    return opts?.hidden ? `<em>${a}</em>` : a; // italicize hidden
+    const tip  = ABIL[id]?.description ? ` data-tip="${escapeAttr(ABIL[id].description!)}"` : "";
+    const a = `<a href="#/ability/${encodeURIComponent(id)}" class="abil-link"${tip}>${name}</a>`;
+    return opts?.hidden ? `<em>${a}</em>` : a;
 }
+
 
 function formatAbilities(abilities: string[], hidden?: string): string {
     const parts: string[] = [];
@@ -107,6 +118,97 @@ function applyDexTableSizing(container: HTMLElement) {
     table.style.setProperty("--col-hidden", `${widths.hidden}px`);
     table.style.setProperty("--col-bst", `${widths.bst}px`);
     table.style.setProperty("--col-stat", `${widths.stat}px`);
+}
+
+function ensureTooltip(): HTMLElement {
+    let el = document.getElementById("tooltip");
+    if (!el) {
+        el = document.createElement("div");
+        el.id = "tooltip";
+        document.body.appendChild(el);
+    }
+    return el;
+}
+
+const TOOLTIP_MARGIN = 8;
+
+function positionTooltip(el: HTMLElement, anchor: HTMLElement) {
+    const rect = anchor.getBoundingClientRect();
+    // make visible to measure
+    const r2 = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // default below the anchor
+    let top = rect.bottom + TOOLTIP_MARGIN;
+    let left = rect.left;
+
+    // clamp horizontally
+    if (left + r2.width > vw - 8) left = vw - 8 - r2.width;
+    if (left < 8) left = 8;
+
+    // if it would go off-screen bottom, place above
+    if (top + r2.height > vh - 8) {
+        top = rect.top - TOOLTIP_MARGIN - r2.height;
+        // move arrow to bottom when above
+        el.style.setProperty("--arrow-pos", "bottom");
+    } else {
+        el.style.setProperty("--arrow-pos", "top");
+    }
+
+    el.style.left = `${Math.round(left)}px`;
+    el.style.top  = `${Math.round(top)}px`;
+}
+
+function bindAbilityTooltips() {
+    const tipEl = ensureTooltip();
+    let currentAnchor: HTMLElement | null = null;
+
+    const show = (a: HTMLElement) => {
+        const tip = a.getAttribute("data-tip");
+        if (!tip) return;
+        currentAnchor = a;
+        tipEl.textContent = tip;
+        // show first so we can measure size before positioning
+        tipEl.classList.add("show");
+        tipEl.style.left = "-10000px";
+        tipEl.style.top = "0px";
+        requestAnimationFrame(() => {
+            if (currentAnchor) positionTooltip(tipEl, currentAnchor);
+        });
+    };
+
+    const hide = () => {
+        currentAnchor = null;
+        tipEl.classList.remove("show");
+    };
+
+    // Hover
+    document.addEventListener("mouseover", (e) => {
+        const a = (e.target as HTMLElement).closest<HTMLElement>('a.abil-link[data-tip]');
+        if (a) show(a);
+    });
+    document.addEventListener("mouseout", (e) => {
+        const a = (e.target as HTMLElement).closest<HTMLElement>('a.abil-link[data-tip]');
+        if (a) hide();
+    });
+    // Keyboard focus
+    document.addEventListener("focusin", (e) => {
+        const a = (e.target as HTMLElement).closest<HTMLElement>('a.abil-link[data-tip]');
+        if (a) show(a);
+    });
+    document.addEventListener("focusout", (e) => {
+        const a = (e.target as HTMLElement).closest<HTMLElement>('a.abil-link[data-tip]');
+        if (a) hide();
+    });
+
+    // Reposition on scroll/resize if visible
+    window.addEventListener("scroll", () => {
+        if (currentAnchor) positionTooltip(tipEl, currentAnchor);
+    }, { passive: true });
+    window.addEventListener("resize", () => {
+        if (currentAnchor) positionTooltip(tipEl, currentAnchor);
+    });
 }
 
 // ----------- dark mode ----------------
@@ -453,6 +555,7 @@ async function start() {
     ]);
     ABIL = abilities;
 
+    bindAbilityTooltips()
     buildFilters(pokemon);
 
     const grid = document.querySelector<HTMLElement>("#grid");

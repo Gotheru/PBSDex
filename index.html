@@ -215,6 +215,60 @@
                     0 0 6px hsl(var(--h) 70% 55% / .25);
         }
 
+        /* Floating tooltip (used for ability descriptions) */
+        #tooltip {
+            position: fixed;                   /* escapes any parent overflow */
+            z-index: 2147483647;               /* always on top */
+            max-width: 36ch;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12.5px;                 /* smaller text */
+            font-weight: 400;                  /* light style */
+            line-height: 1.25;
+            pointer-events: none;              /* don't steal hover/focus */
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 100ms ease, transform 100ms ease;
+            background: #fff;                  /* white in light mode */
+            color: #111;
+            border: 1px solid rgba(0,0,0,.12);
+            box-shadow: 0 10px 28px rgba(0,0,0,.18);
+        }
+        #tooltip.show { opacity: 1; transform: translateY(0); }
+        #tooltip::after {                      /* small arrow */
+            content: "";
+            position: absolute;
+            width: 10px; height: 10px;
+            left: 16px; top: -5px;
+            transform: rotate(45deg);
+            background: #fff;
+            border-left: 1px solid rgba(0,0,0,.12);
+            border-top: 1px solid rgba(0,0,0,.12);
+        }
+
+        [data-theme="dark"] #tooltip {
+            background: #0f1115;
+            color: #e8ecf1;
+            border: 1px solid #2b3040;
+            box-shadow: 0 12px 32px rgba(0,0,0,.55);
+        }
+        [data-theme="dark"] #tooltip::after {
+            background: #0f1115;
+            border-left: 1px solid #2b3040;
+            border-top: 1px solid #2b3040;
+        }
+
+        .detail a.abil-link,
+        .detail a.abil-link:visited,
+        .dex-table a.abil-link,
+        .dex-table a.abil-link:visited { color: inherit; text-decoration: none; }
+        .dex-table a.abil-link:hover,
+        .detail  a.abil-link:hover { text-decoration: none; }
+        /* keep an accessible focus ring */
+        .dex-table a.abil-link:focus,
+        .detail  a.abil-link:focus { outline: 2px solid #93c5fd; outline-offset: 2px; border-radius: 2px; }
+        [data-theme="dark"] .dex-table a.abil-link:focus,
+        [data-theme="dark"] .detail  a.abil-link:focus { outline-color: #60a5fa; }
 
     </style>
 </head>
