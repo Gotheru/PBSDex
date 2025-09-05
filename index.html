@@ -616,6 +616,61 @@
             padding: 8px 10px;
         }
 
+        /* Type detail header */
+        .type-detail .type-head { padding: 14px 16px; margin-bottom: 12px; }
+        .type-detail .type-title{ display:flex; align-items:center; gap:10px; }
+        .type-detail .type-title h1{ margin:0; font-size:22px; }
+
+        /* Two info boxes (Defending / Attacking) side by side */
+        .type-detail .type-grid{
+            display:grid;
+            grid-template-columns: repeat(2, minmax(0,1fr));
+            gap:12px; margin-top:10px;
+        }
+        .type-detail .type-box{ padding: 12px 14px; }
+        .type-detail .type-box h2{ margin:0 0 8px; font-size:14px; opacity:.8; }
+        .type-detail .tip-row{ display:flex; align-items:center; gap:10px; margin:6px 0; }
+        .type-detail .tip-row b{ min-width: 12.5em; }
+
+        /* Reuse your existing icon sizes */
+        .type-detail .type-box .type-icon{ width:22px; height:22px; image-rendering:pixelated; }
+
+        /* Stack on smaller screens */
+        @media (max-width: 900px){
+            .type-detail .type-grid{ grid-template-columns: 1fr; }
+        }
+
+        /* Make type icons clickable with no link styling */
+        a.type-link, a.type-link:visited{ color:inherit; text-decoration:none; }
+        a.type-link:hover{ text-decoration:none; }
+
+        /* Type detail headings & rows */
+        .type-detail .type-box { padding: 12px 14px; }
+        .type-detail .type-box h2{
+            margin: 0 0 8px;
+            font-size: 16px;        /* ≥ 'Immune to' label size */
+            font-weight: 500;       /* not bold */
+        }
+        .type-detail .tip-row{
+            display: flex; align-items: center;
+            gap: 10px; margin: 6px 0;
+        }
+        .type-detail .tip-row b{ min-width: 12.5em; }
+
+        /* Horizontal icon flow (like tooltip), with wrapping */
+        .type-detail .tip-icons{
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;        /* wrap to next line when needed */
+            align-items: center;
+        }
+        .type-detail .tip-icons .type-icon{
+            width: 22px; height: 22px; image-rendering: pixelated; display: block;
+        }
+
+        /* Link styling for type icons: look like plain icons, not blue links */
+        a.type-link, a.type-link:visited { color: inherit; text-decoration: none; }
+        a.type-link:hover { text-decoration: none; }
 
     </style>
 </head>

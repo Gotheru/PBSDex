@@ -85,7 +85,7 @@ function typeIconTag(typeId: string) {
 
 function iconRow(list: string[]) {
     if (!list.length) return "";
-    return `<span class="tip-icons">${list.map(typeIconTag).join("")}</span>`;
+    return `<span class="tip-icons">${list.map(typeLinkIconTag).join("")}</span>`;
 }
 
 function typeMatchupTooltipHTML(types: string[]) {
@@ -100,6 +100,63 @@ function typeMatchupTooltipHTML(types: string[]) {
         section("Very weak to:", m.veryWeak);
     return html || `<div class="tip-row"><i>No notable modifiers</i></div>`;
 }
+
+// All type ids, from your TYPES dataset
+function allTypes(): string[] {
+    return Object.keys(typeData || {});
+}
+
+// Get multiplier for a single attacking vs single defending type
+function mult(atk: string, def: string): number {
+    const immunities = typeData[def].immunities;
+    for (const x of immunities) {
+        if (x == atk) {
+            return 0;
+        }
+    }
+    const resistances = typeData[def].resistances;
+    for (const x of resistances) {
+        if (x == atk) {
+            return 0.5;
+        }
+    }
+    const weaknesses = typeData[def].weaknesses;
+    for (const x of weaknesses) {
+        if (x == atk) {
+            return 2;
+        }
+    }
+    return 1;
+}
+
+// For DEFENDING as a single type: what hits this type for 0, 0.5, 2
+function defendingBuckets(defType: string) {
+    const immune: string[] = [];
+    const resist: string[] = [];
+    const weak: string[] = [];
+    for (const a of allTypes()) {
+        const m = mult(a, defType);
+        if (m === 0) immune.push(a);
+        else if (m === 0.5) resist.push(a);
+        else if (m === 2) weak.push(a);
+    }
+    return { immune, resist, weak };
+}
+
+// For ATTACKING as a single type: what targets are 0, 0.5, 2
+function attackingBuckets(atkType: string) {
+    const noEffect: string[] = [];
+    const notVery: string[] = [];
+    const superEff: string[] = [];
+    for (const d of allTypes()) {
+        const m = mult(atkType, d);
+        if (m === 0) noEffect.push(d);
+        else if (m === 0.5) notVery.push(d);
+        else if (m === 2) superEff.push(d);
+    }
+    return { noEffect, notVery, superEff };
+}
+
 
 // ----- Moves ------
 // Moves index (from moves.json)
@@ -162,7 +219,7 @@ function buildLevelUpTable(p: Mon): string {
         const mv = moveInfo(move);
         const levelLabel = (level === 0) ? "Evolve" : (level === 1 ? "—" : String(level));
 
-        const typeIcon = mv?.type ? typeIconTag(mv.type) : "";
+        const typeIcon = mv?.type ? typeLinkIconTag(mv.type) : "";
         const catIcon  = categoryIconTag(mv?.category);
 
         // Power: em-dash when null/undefined or explicitly 1 (per your rule) or Status
@@ -458,7 +515,7 @@ function moveRowHTML(moveId: string) {
     const mv = movesIndex?.[moveId] || null;
 
     const name = moveDisplayName(moveId);
-    const typeIcon = mv?.type ? typeIconTag(mv.type) : "";
+    const typeIcon = mv?.type ? typeLinkIconTag(mv.type) : "";
     const catIcon  = categoryIconTag(mv?.category);
 
     // Power: em-dash for Status / null / 1
@@ -594,6 +651,14 @@ function bindAbilityTooltips() {
         if (currentAnchor) positionTooltip(tipEl, currentAnchor);
     });
 }
+
+// put near your tooltip helpers
+function hideTooltip() {
+    const tip = document.getElementById("tooltip");
+    if (tip) tip.classList.remove("show");
+}
+
+
 
 function bindTypeTooltips() {
     const tipEl = ensureTooltip();
@@ -1047,7 +1112,7 @@ function buildDetailHTML(p: Mon) {
       <div class="info-tile panel">
         <div class="info-label"><b>Typing</b></div>
         <div class="info-value center">
-          ${typingIconsHTML(p.types).replace('class="type-icons"', 'class="type-icons big"')}
+          ${typingIconsLinkedHTML(p.types).replace('class="type-icons"', 'class="type-icons big"')}
         </div>
       </div>
 
@@ -1101,11 +1166,73 @@ function buildDetailHTML(p: Mon) {
 
 }
 
+function renderTypeDetail(typeId: string) {
+    const grid  = document.querySelector<HTMLElement>("#grid");
+    const count = document.querySelector<HTMLElement>("#count");
+    if (!grid || !count) return;
+
+    const title = typeData?.[typeId]?.name || typeId;
+    const def = defendingBuckets(typeId);
+    const atk = attackingBuckets(typeId);
+
+    // Pokémon of this type
+    const mons = ALL_POKEMON
+        .filter(m => (m.types || []).includes(typeId))
+        .sort((a,b)=> a.name.localeCompare(b.name));
+
+    // Moves of this type
+    const moveIds = Object.keys(movesIndex || {}).filter(id => movesIndex[id]?.type === typeId);
+
+    count.innerHTML = `<button class="header-back" aria-label="Back to list">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", () => navigateToList());
+
+    grid.innerHTML = `
+  <article class="detail type-detail">
+    <header class="type-head panel">
+      <div class="type-title">
+        ${typeIconTag(typeId)}
+        <h1>${title}</h1>
+      </div>
+
+      <div class="type-grid">
+        <section class="panel type-box">
+          <h2>Defending</h2>
+          <div class="tip-row"><b>Immune to:</b> <span class="tip-icons">${def.immune.map(typeLinkIconTag).join("") || "—"}</span></div>
+          <div class="tip-row"><b>Resists:</b>   <span class="tip-icons">${def.resist.map(typeLinkIconTag).join("") || "—"}</span></div>
+          <div class="tip-row"><b>Weak to:</b>   <span class="tip-icons">${def.weak.map(typeLinkIconTag).join("")   || "—"}</span></div>
+        </section>
+
+        <section class="panel type-box">
+          <h2>Attacking</h2>
+          <div class="tip-row"><b>Super effective:</b>   <span class="tip-icons">${atk.superEff.map(typeLinkIconTag).join("") || "—"}</span></div>
+          <div class="tip-row"><b>Not very effective:</b><span class="tip-icons">${atk.notVery.map(typeLinkIconTag).join("") || "—"}</span></div>
+          <div class="tip-row"><b>No effect:</b>         <span class="tip-icons">${atk.noEffect.map(typeLinkIconTag).join("") || "—"}</span></div>
+        </section>
+      </div>
+    </header>
+
+    <section class="type-mons">
+      <h2>Pokémon with ${title}</h2>
+      ${buildTableHTML(mons)}
+    </section>
+
+    <section class="type-moves">
+      <h2>Moves of type ${title}</h2>
+      ${buildMovesTableNoLv("", moveIds)}
+    </section>
+  </article>`;
+
+    // Make tables match the main sizing + fallback icons
+    wireIconFallbacks(grid);
+    applyDexTableSizing(grid);
+}
+
+
 function buildMoveDetailHTML(moveId: string): string {
     const mv = movesIndex?.[moveId];
     if (!mv) return `<div style="padding:16px;">Move not found.</div>`;
 
-    const typeIcon = mv.type ? typeIconTag(mv.type) : "";
+    const typeIcon = mv.type ? typeLinkIconTag(mv.type) : "";
     const catIcon  = mv.category ? categoryIconTag(mv.category) : "";
 
     // numbers / labels
@@ -1160,6 +1287,13 @@ function buildMoveDetailHTML(moveId: string): string {
   </article>`;
 }
 
+function typeLinkIconTag(t: string) {
+    return `<a href="#/type/${encodeURIComponent(t)}" class="type-link" data-type="${t}">${typeIconTag(t)}</a>`;
+}
+
+function typingIconsLinkedHTML(types: string[]) {
+    return `<span class="type-icons">${types.map(typeLinkIconTag).join("")}</span>`;
+}
 
 
 function chainRoot(mon: Mon): Mon {
@@ -1276,8 +1410,8 @@ function tFlag(key: string | undefined): string {
 
 type Route = { kind: "list" } | { kind: "mon"; id: string } | { kind: "ability"; id: string };
 
-function parseHash(): {type:'list'|'mon'|'ability'|'move', id?:string} {
-    const m = location.hash.match(/^#\/(mon|ability|move)\/(.+)$/);
+function parseHash(): {type:'list'|'mon'|'ability'|'move'|'type', id?:string} {
+    const m = location.hash.match(/^#\/(mon|ability|move|type)\/(.+)$/);
     if (m) return { type: m[1] as any, id: decodeURIComponent(m[2]) };
     return { type: 'list' };
 }
@@ -1315,17 +1449,19 @@ function navigateToList() {
     renderCurrent();
 }
 
+
 function renderCurrent() {
     const grid = document.querySelector<HTMLElement>("#grid");
     if (!grid) return;
-    const allDataJson = grid.getAttribute("data-all-pokemon");
-    if (!allDataJson) return;
-    const pokemon: Mon[] = JSON.parse(allDataJson);
+    const data = grid.getAttribute("data-all-pokemon");
+    if (!data) return;
+    const pokemon: Mon[] = JSON.parse(data);
 
     const route = parseHash();
     if (route.type === "mon"     && route.id) renderDetail(pokemon, route.id);
-    else if (route.type === "ability" && route.id) renderAbilityDetail(pokemon, route.id); // <-- pass both
+    else if (route.type === "ability" && route.id) renderAbilityDetail(pokemon, route.id);
     else if (route.type === "move"    && route.id) renderMoveDetail(route.id);
+    else if (route.type === "type"    && route.id) renderTypeDetail(route.id);
     else renderTable(pokemon);
 }
 
@@ -1425,7 +1561,12 @@ function renderAbilityDetail(pokemon: Mon[], id: string) {
 if (typeof document !== "undefined") {
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => void start(), { once: true });
+
     } else {
+        // hide on clicks (e.g., clicking a link) and hash-route changes
+        document.addEventListener("click", () => hideTooltip(), { capture: true });
+        window.addEventListener("hashchange", () => hideTooltip());
+
         void start();
     }
 }
