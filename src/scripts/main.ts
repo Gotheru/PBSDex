@@ -15,6 +15,72 @@ type Mon = {
 };
 type AbilityInfo = { name: string; description?: string };
 type AbilityMap = Record<string, AbilityInfo>;
+// ---- types.json loader ----
+type TypeInfo = {
+    name: string; internalId: string;
+    weaknesses: string[]; resistances: string[]; immunities: string[];
+    isSpecialType: boolean; isPseudoType: boolean; index: number;
+};
+let typeData: Record<string, TypeInfo> = {};
+
+// ---- combined defensive matchup for 1–2 types ----
+function combineDefense(types: string[]) {
+    const allAtk = Object.keys(typeData); // iterate all known types as attackers
+
+    const immune: string[] = [];
+    const strongResists: string[] = [];
+    const resists: string[] = [];
+    const weak: string[] = [];
+    const veryWeak: string[] = [];
+
+    for (const atk of allAtk) {
+        // per-own-type relation for this attacking type
+        let seenImm = false, resCount = 0, weakCount = 0;
+        for (const def of types) {
+            const info = typeData[def];
+            if (!info) continue;
+            if (info.immunities.includes(atk)) { seenImm = true; break; }
+            if (info.resistances.includes(atk)) resCount++;
+            else if (info.weaknesses.includes(atk)) weakCount++;
+        }
+        if (seenImm) { immune.push(atk); continue; }
+        if (resCount === 2) { strongResists.push(atk); continue; }
+        if (weakCount === 2) { veryWeak.push(atk); continue; }
+        if (resCount === 1 && weakCount === 0) { resists.push(atk); continue; }
+        if (weakCount === 1 && resCount === 0) { weak.push(atk); continue; }
+        // net neutral -> ignore
+    }
+
+    return { immune, strongResists, resists, weak, veryWeak };
+}
+
+function typeIconTag(typeId: string) {
+    const srcs = typeCandidates(typeId);
+    const title = typeData[typeId]?.name || typeId;
+    return `<img class="type-icon"
+               src="${srcs[0]}" data-srcs="${srcs.join("|")}" data-idx="0"
+               alt="${typeId}" title="${title}" loading="lazy" decoding="async">`;
+}
+
+function iconRow(list: string[]) {
+    if (!list.length) return "";
+    return `<span class="tip-icons">${list.map(typeIconTag).join("")}</span>`;
+}
+
+function typeMatchupTooltipHTML(types: string[]) {
+    const m = combineDefense(types);
+    const section = (label: string, arr: string[]) =>
+        arr.length ? `<div class="tip-row"><b>${label}</b> ${iconRow(arr)}</div>` : "";
+    const html =
+        section("Immune to:", m.immune) +
+        section("Strongly resists:", m.strongResists) +
+        section("Resists:", m.resists) +
+        section("Weak to:", m.weak) +
+        section("Very weak to:", m.veryWeak);
+    return html || `<div class="tip-row"><i>No notable modifiers</i></div>`;
+}
+
+
 
 // --- Abilities ---
 
@@ -25,6 +91,13 @@ async function loadAbilities(): Promise<AbilityMap> {
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     return await res.json();
+}
+
+async function loadTypes() {
+    const dataUrl = new URL("./data/types.json", document.baseURI).toString();
+    const res = await fetch(dataUrl, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
+    typeData = await res.json();
 }
 
 function abilityName(id?: string | null): string {
@@ -329,6 +402,53 @@ function bindAbilityTooltips() {
         if (currentAnchor) positionTooltip(tipEl, currentAnchor);
     });
 }
+
+function bindTypeTooltips() {
+    const tipEl = ensureTooltip();
+    let currentAnchor: HTMLElement | null = null;
+
+    const show = (anchor: HTMLElement) => {
+        const types = Array.from(anchor.querySelectorAll<HTMLImageElement>("img.type-icon"))
+            .map(img => (img.getAttribute("alt") || "").toUpperCase())
+            .filter(Boolean);
+
+        tipEl.innerHTML = typeMatchupTooltipHTML(types);
+        tipEl.classList.add("show");
+        tipEl.style.left = "-10000px"; tipEl.style.top = "0px";
+        // attach image fallbacks inside tooltip
+        wireFallbacks(tipEl, "img.type-icon");
+        requestAnimationFrame(() => positionTooltip(tipEl, anchor));
+        currentAnchor = anchor;
+    };
+
+    const hide = () => {
+        currentAnchor = null;
+        tipEl.classList.remove("show");
+        tipEl.innerHTML = "";
+    };
+
+    // Delegated events for any .type-icons (table + detail)
+    document.addEventListener("mouseover", (e) => {
+        const el = (e.target as HTMLElement).closest<HTMLElement>(".type-icons");
+        if (el) show(el);
+    });
+    document.addEventListener("mouseout", (e) => {
+        const el = (e.target as HTMLElement).closest<HTMLElement>(".type-icons");
+        if (el) hide();
+    });
+    document.addEventListener("focusin", (e) => {
+        const el = (e.target as HTMLElement).closest<HTMLElement>(".type-icons");
+        if (el) show(el);
+    });
+    document.addEventListener("focusout", (e) => {
+        const el = (e.target as HTMLElement).closest<HTMLElement>(".type-icons");
+        if (el) hide();
+    });
+
+    window.addEventListener("scroll", () => { if (currentAnchor) positionTooltip(tipEl, currentAnchor); }, { passive: true });
+    window.addEventListener("resize", () => { if (currentAnchor) positionTooltip(tipEl, currentAnchor); });
+}
+
 
 // ----------- dark mode ----------------
 
@@ -798,9 +918,11 @@ async function start() {
         loadAbilities(),
         loadData(),
     ]);
+    await Promise.all([loadTypes()])
     ABIL = abilities;
 
     bindAbilityTooltips()
+    bindTypeTooltips()
     buildFilters(pokemon);
 
     const grid = document.querySelector<HTMLElement>("#grid");
