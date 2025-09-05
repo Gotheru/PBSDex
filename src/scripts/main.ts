@@ -80,6 +80,37 @@ function statBarHTML(v: number) {
     return `<div class="statbar" style="--w:${pct}%;--h:${hue};--s1:${s1}%;--l1:${l1}%;--s2:${s2}%;--l2:${l2}%"></div>`;
 }
 
+// ── Type icon helpers ────────────────────────────────────────────────────────
+function typeCandidates(tRaw: string): string[] {
+    const base = new URL("./images/types/", document.baseURI).toString();
+    const name = String(tRaw || "");
+    const cap = name ? name[0] + name.slice(1).toLowerCase() : name;
+    const variants = [name, name.toUpperCase(), name.toLowerCase(), cap];
+    const exts = ["png", "PNG"];
+    const seen = new Set<string>();
+    const urls: string[] = [];
+    for (const v of variants) for (const ext of exts) {
+        const u = base + encodeURIComponent(v) + "." + ext;
+        if (!seen.has(u)) { urls.push(u); seen.add(u); }
+    }
+    return urls;
+}
+
+function typingIconsHTML(types: string[]): string {
+    const ts = (types || []).slice(0, 2).filter(Boolean);
+    if (ts.length === 0) return "";
+    const imgs = ts.map(t => {
+        const srcs = typeCandidates(t);
+        const alt = t;
+        return `<img class="type-icon"
+                 src="${srcs[0]}" data-srcs="${srcs.join("|")}" data-idx="0"
+                 alt="${alt}" title="${alt}" loading="lazy" decoding="async">`;
+    }).join("");
+    return `<span class="type-icons">${imgs}</span>`;
+}
+
+// generic fallback wire-up you already added; reuse it for type icons too:
+// wireFallbacks(root, "img.type-icon");
 
 
 function formatTyping(types: string[]): string {
@@ -168,14 +199,15 @@ function applyDexTableSizing(container: HTMLElement) {
     if (!allDataJson) return;
     const allData: Mon[] = JSON.parse(allDataJson);
     const widths = measureWidths(allData);
-    table.style.setProperty("--col-icon", `44px`); // NEW: fixed icon width
+    table.style.setProperty("--col-icon", `44px`);
+    table.style.setProperty("--col-typing", `110px`);   // NEW
     table.style.setProperty("--col-name", `${widths.name}px`);
-    table.style.setProperty("--col-type", `${widths.type}px`);
     table.style.setProperty("--col-ability", `${widths.ability}px`);
     table.style.setProperty("--col-hidden", `${widths.hidden}px`);
     table.style.setProperty("--col-bst", `${widths.bst}px`);
     table.style.setProperty("--col-stat", `${widths.stat}px`);
 }
+
 
 
 function ensureTooltip(): HTMLElement {
@@ -441,9 +473,10 @@ function measureWidths(pokemon: Mon[]) {
 }
 /* ---------- sorting ------------- */
 type SortKey =
-    | "name" | "type1" | "type2"
+    | "name" | "typing"
     | "ability1" | "ability2" | "hidden"
     | "hp" | "atk" | "def" | "spa" | "spd" | "spe" | "bst";
+
 type SortDir = "asc" | "desc";
 
 let sortState: { key: SortKey; dir: SortDir } = { key: "name", dir: "asc" };
@@ -451,8 +484,7 @@ let sortState: { key: SortKey; dir: SortDir } = { key: "name", dir: "asc" };
 function getFieldForSort(p: Mon, key: SortKey): string | number {
     switch (key) {
         case "name":   return p.name || "";
-        case "type1":  return p.types[0] ?? "";
-        case "type2":  return p.types[1] ?? "";
+        case "typing": return (p.types?.[0] || "") + " " + (p.types?.[1] || "");
         case "ability1": return abilityName(p.abilities?.[0]);
         case "ability2": return abilityName(p.abilities?.[1]);
         case "hidden":   return abilityName(p.hiddenAbility);
@@ -493,8 +525,7 @@ function buildTableHTML(list: Mon[]) {
     <tr>
       <th class="icon-col" aria-label="Sprite"></th>
       ${th("Name", "name")}
-      ${th("Type1", "type1")}
-      ${th("Type2", "type2")}
+      ${th("Typing", "typing")}
       ${th("Ability1", "ability1")}
       ${th("Ability2", "ability2")}
       ${th("Hidden Ability", "hidden")}
@@ -509,30 +540,23 @@ function buildTableHTML(list: Mon[]) {
   </thead>
   <tbody>
     ${list.map(p => {
-        const type1 = p.types[0] ?? "";
-        const type2 = p.types[1] ?? "";
         const ability1 = p.abilities[0] ? abilityLinkHTML(p.abilities[0]) : "";
         const ability2 = p.abilities[1] ? abilityLinkHTML(p.abilities[1]) : "";
         const hidden   = p.hiddenAbility ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : "";
         const sum = bst(p.stats);
-
         const srcs = iconCandidates(p);
         const icon = `
         <img class="dex-icon"
              src="${srcs[0]}"
              data-srcs="${srcs.join('|')}"
              data-idx="0"
-             alt=""
-             loading="lazy"
-             decoding="async">
+             alt="" loading="lazy" decoding="async">
       `;
-
         return `
       <tr class="rowlink" tabindex="0" data-id="${p.id}">
         <td class="icon">${icon}</td>
         <td title="${p.name}">${p.name}</td>
-        <td title="${type1}">${type1}</td>
-        <td title="${type2}">${type2}</td>
+        <td class="typing" title="${(p.types||[]).join(' | ')}">${typingIconsHTML(p.types)}</td>
         <td title="${abilityName(p.abilities[0])}">${ability1}</td>
         <td title="${abilityName(p.abilities[1])}">${ability2}</td>
         <td title="${abilityName(p.hiddenAbility)}">${hidden}</td>
@@ -590,7 +614,6 @@ function renderTable(pokemon: Mon[]) {
     count.textContent = `${list.length} result${list.length === 1 ? "" : "s"}`;
 
     grid.innerHTML = buildTableHTML(list);
-    wireIconFallbacks(grid);
 
 
     // header click & keyboard sort
@@ -627,7 +650,8 @@ function renderTable(pokemon: Mon[]) {
         if (tr?.dataset.id) navigateToMon(tr.dataset.id);
     });
 
-
+    wireFallbacks(grid, "img.dex-icon");
+    wireFallbacks(grid, "img.type-icon");
 
     // set fixed widths based on the FULL dataset (stored on #grid)
     applyDexTableSizing(grid);
@@ -636,16 +660,7 @@ function renderTable(pokemon: Mon[]) {
 /* ---------- detail rendering ---------- */
 
 function buildDetailHTML(p: Mon) {
-    // middle tiles: stacked lines
-    const typingLines = (p.types && p.types.length)
-        ? p.types.map(t => `<div class="line">${t}</div>`).join("")
-        : `<div class="line">—</div>`;
-
-    const abilityLines = [
-        p.abilities?.[0] ? abilityLinkHTML(p.abilities[0]) : "",
-        p.abilities?.[1] ? abilityLinkHTML(p.abilities[1]) : "",
-        p.hiddenAbility   ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : "",
-    ].filter(Boolean).map(html => `<div class="line">${html}</div>`).join("");
+    const abilitiesStr = formatAbilities(p.abilities, p.hiddenAbility);
 
     const srcs = frontCandidates(p);
     const img = `
@@ -660,7 +675,6 @@ function buildDetailHTML(p: Mon) {
 
     return `
   <article class="detail mon-layout">
-
     <div class="mon-art">
       <div class="art-box">${img}</div>
     </div>
@@ -668,12 +682,21 @@ function buildDetailHTML(p: Mon) {
     <div class="mon-middle">
       <div class="info-tile">
         <div class="info-label">Typing</div>
-        <div class="info-value stacked center">${typingLines}</div>
+        <div class="info-value center">
+          <span class="type-icons big">${typingIconsHTML(p.types).replace('type-icons','type-icons big')}</span>
+        </div>
       </div>
 
       <div class="info-tile">
         <div class="info-label">Abilities</div>
-        <div class="info-value stacked center">${abilityLines}</div>
+        <div class="info-value stacked center">
+          ${
+        [ p.abilities?.[0] ? abilityLinkHTML(p.abilities[0]) : "",
+            p.abilities?.[1] ? abilityLinkHTML(p.abilities[1]) : "",
+            p.hiddenAbility   ? abilityLinkHTML(p.hiddenAbility, { hidden: true }) : ""
+        ].filter(Boolean).map(h => `<div class="line">${h}</div>`).join("")
+    }
+        </div>
       </div>
     </div>
 
@@ -694,6 +717,7 @@ function buildDetailHTML(p: Mon) {
     </div>
   </article>`;
 }
+
 
 
 
@@ -719,6 +743,8 @@ function renderDetail(pokemon: Mon[], id: string) {
 
     // sprite fallback
     wireFallbacks(grid, "img.mon-front");
+    wireFallbacks(grid, "img.type-icon");
+
 }
 
 
