@@ -1114,9 +1114,10 @@ function buildMoveDetailHTML(moveId: string): string {
     const pp    = (mv.pp ?? "—");
     const prio  = (mv.priority == null ? "0" : String(mv.priority));
     const target= mv.target || "—";
+    const targetText = tTarget(mv.target);
     const flags = Array.isArray(mv.flags) ? mv.flags : [];
     const flagsHTML = flags.length
-        ? `<ul class="flag-list">${flags.map(f => `<li>${f}</li>`).join("")}</ul>`
+        ? `<ul class="flag-list">${flags.map(f => `<li>${tFlag(f)}</li>`).join("")}</ul>`
         : `<div class="empty-learnset">—</div>`;
 
     const learners = pokemonLearnersOf(moveId);
@@ -1145,7 +1146,7 @@ function buildMoveDetailHTML(moveId: string): string {
     </section>
 
     <section class="panel move-section">
-      <p><b>Targets:</b> ${target}</p>
+      <p><b>Targets:</b> ${targetText}</p>
     </section>
 
     <section class="panel move-section">
@@ -1222,6 +1223,54 @@ function renderDetail(pokemon: Mon[], id: string) {
 
 }
 
+/* ----- intl ------ */
+// ---- i18n / intl ------------------------------------------------------
+type IntlPack = {
+    moveTargets?: Record<string, string>;
+    moveFlags?: Record<string, string>;
+};
+
+let INTL: IntlPack = {};
+let INTL_IDX = {
+    moveTargets: new Map<string, string>(),
+    moveFlags: new Map<string, string>()
+};
+
+const normKey = (s: string) => String(s || "").replace(/[\s_-]+/g, "").toLowerCase();
+const humanize = (s: string) =>
+    String(s || "")
+        .replace(/[_-]+/g, " ")
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, c => c.toUpperCase());
+
+async function loadIntl() {
+    const url = new URL("./data/intl.json", document.baseURI).toString();
+    const res = await fetch(url, { cache: "no-cache" });
+    if (!res.ok) return;
+    INTL = await res.json();
+
+    // build normalized indexes for forgiving lookups
+    INTL_IDX.moveTargets.clear();
+    INTL_IDX.moveFlags.clear();
+    for (const [k, v] of Object.entries(INTL.moveTargets || {})) {
+        INTL_IDX.moveTargets.set(normKey(k), v);
+    }
+    for (const [k, v] of Object.entries(INTL.moveFlags || {})) {
+        INTL_IDX.moveFlags.set(normKey(k), v);
+    }
+}
+
+function tTarget(key: string | undefined): string {
+    if (!key) return "—";
+    return INTL_IDX.moveTargets.get(normKey(key)) || humanize(key);
+}
+function tFlag(key: string | undefined): string {
+    if (!key) return "—";
+    return INTL_IDX.moveFlags.get(normKey(key)) || humanize(key);
+}
+
 
 /* ---------- tiny hash router ---------- */
 
@@ -1287,6 +1336,7 @@ async function start() {
     initTheme();
 
     await Promise.all([
+        loadIntl(),
         loadAbilities?.(),  // if you already have this
         loadTypes?.(),      // if you already have this
         loadMoves(),        // NEW
