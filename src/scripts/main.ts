@@ -468,9 +468,8 @@ function renderTable(pokemon: Mon[]) {
     const grid = document.querySelector<HTMLElement>("#grid");
     const q = document.querySelector<HTMLInputElement>("#q");
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
-    const sortSel = document.querySelector<HTMLSelectElement>("#sort");
     const count = document.querySelector<HTMLElement>("#count");
-    if (!grid || !q || !typeSel || !sortSel || !count) return;
+    if (!grid || !q || !typeSel || !count) return;
 
     const query = q.value.trim().toLowerCase();
     const typeFilter = typeSel.value;
@@ -642,11 +641,9 @@ async function start() {
 
     const q = document.querySelector<HTMLInputElement>("#q");
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
-    const sortSel = document.querySelector<HTMLSelectElement>("#sort");
     const rerender = () => renderTable(pokemon);
     q?.addEventListener("input", rerender);
     typeSel?.addEventListener("change", rerender);
-    sortSel?.addEventListener("change", rerender);
 
     grid?.addEventListener("click", (e) => {
         const target = e.target as HTMLElement;
