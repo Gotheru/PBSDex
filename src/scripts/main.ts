@@ -352,27 +352,72 @@ function measureWidths(pokemon: Mon[]) {
         stat:   Math.min(maxStat   + fudge, cap.stat),
     };
 }
+/* ---------- sorting ------------- */
+type SortKey =
+    | "name" | "type1" | "type2"
+    | "ability1" | "ability2" | "hidden"
+    | "hp" | "atk" | "def" | "spa" | "spd" | "spe" | "bst";
+type SortDir = "asc" | "desc";
+
+let sortState: { key: SortKey; dir: SortDir } = { key: "name", dir: "asc" };
+
+function getFieldForSort(p: Mon, key: SortKey): string | number {
+    switch (key) {
+        case "name":   return p.name || "";
+        case "type1":  return p.types[0] ?? "";
+        case "type2":  return p.types[1] ?? "";
+        case "ability1": return abilityName(p.abilities?.[0]);
+        case "ability2": return abilityName(p.abilities?.[1]);
+        case "hidden":   return abilityName(p.hiddenAbility);
+        case "hp":   return p.stats.hp;
+        case "atk":  return p.stats.atk;
+        case "def":  return p.stats.def;
+        case "spa":  return p.stats.spa;
+        case "spd":  return p.stats.spd;
+        case "spe":  return p.stats.spe;
+        case "bst":  return bst(p.stats);
+    }
+}
+
+function cmp(a: Mon, b: Mon, key: SortKey, dir: SortDir): number {
+    const av = getFieldForSort(a, key);
+    const bv = getFieldForSort(b, key);
+    let n = 0;
+    if (typeof av === "number" && typeof bv === "number") {
+        n = av - bv;
+    } else {
+        n = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+    }
+    return dir === "asc" ? n : -n;
+}
+
 
 /* ---------- table rendering ---------- */
 
 function buildTableHTML(list: Mon[]) {
+    const arrow = (key: SortKey) =>
+        sortState.key === key ? `<span class="sort-arrow">${sortState.dir === "asc" ? "▲" : "▼"}</span>` : "";
+
+    const th = (label: string, key: SortKey) =>
+        `<th data-sort="${key}" tabindex="0" class="sortable">${label} ${arrow(key)}</th>`;
+
     return `
 <table class="dex-table">
   <thead>
     <tr>
-      <th>Name</th>
-      <th>Type1</th>
-      <th>Type2</th>
-      <th>Ability1</th>
-      <th>Ability2</th>
-      <th>Hidden Ability</th>
-      <th>HP</th>
-      <th>Atk</th>
-      <th>Def</th>
-      <th>SpA</th>
-      <th>SpD</th>
-      <th>Spe</th>
-      <th>BST</th>
+      ${th("Name", "name")}
+      ${th("Type1", "type1")}
+      ${th("Type2", "type2")}
+      ${th("Ability1", "ability1")}
+      ${th("Ability2", "ability2")}
+      ${th("Hidden Ability", "hidden")}
+      ${th("HP", "hp")}
+      ${th("Atk", "atk")}
+      ${th("Def", "def")}
+      ${th("SpA", "spa")}
+      ${th("SpD", "spd")}
+      ${th("Spe", "spe")}
+      ${th("BST", "bst")}
     </tr>
   </thead>
   <tbody>
@@ -403,6 +448,7 @@ function buildTableHTML(list: Mon[]) {
   </tbody>
 </table>`;
 }
+
 
 function buildFilters(pokemon: Mon[]) {
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
@@ -437,15 +483,48 @@ function renderTable(pokemon: Mon[]) {
             const hay = (p.name + " " + p.types.join(" ") + " " + abilNames + " " + hiddenName).toLowerCase();
             return inType && (!query || hay.includes(query));
         })
-        .sort((a, b) => {
-            if (sortSel.value === "name") return a.name.localeCompare(b.name);
-            if (sortSel.value === "bst") return bst(b.stats) - bst(a.stats);
-            return 0;
-        });
+        .sort((a, b) => cmp(a, b, sortState.key, sortState.dir));
+
 
     count.textContent = `${list.length} result${list.length === 1 ? "" : "s"}`;
 
     grid.innerHTML = buildTableHTML(list);
+
+    // header click & keyboard sort
+    const head = grid.querySelector("thead");
+    head?.addEventListener("click", (e) => {
+        const th = (e.target as HTMLElement).closest<HTMLTableCellElement>("th.sortable[data-sort]");
+        if (!th) return;
+        const key = th.dataset.sort as SortKey;
+        if (sortState.key === key) {
+            sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+        } else {
+            sortState = { key, dir: (key === "name" || key.startsWith("type") || key.startsWith("ability") || key === "hidden") ? "asc" : "desc" };
+        }
+        renderTable(pokemon);
+    });
+    head?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const th = (e.target as HTMLElement).closest<HTMLTableCellElement>("th.sortable[data-sort]");
+        if (!th) return;
+        e.preventDefault();
+        const key = th.dataset.sort as SortKey;
+        if (sortState.key === key) {
+            sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+        } else {
+            sortState = { key, dir: (key === "name" || key.startsWith("type") || key.startsWith("ability") || key === "hidden") ? "asc" : "desc" };
+        }
+        renderTable(pokemon);
+    });
+    grid?.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("a")) return;                 // ability links
+        if (target.closest("thead")) return;             // header sorts
+        const tr = target.closest<HTMLTableRowElement>("tr.rowlink");
+        if (tr?.dataset.id) navigateToMon(tr.dataset.id);
+    });
+
+
 
     // set fixed widths based on the FULL dataset (stored on #grid)
     applyDexTableSizing(grid);
