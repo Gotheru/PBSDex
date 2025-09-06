@@ -751,6 +751,24 @@
         .evo-name { margin-top: 6px; font-size: 13px; font-weight: 600; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .evo-method { margin-top: 4px; font-size: 12px; opacity: .8; }
 
+        /* Pokédex flavor tile: single column, italic */
+        .info-tile.flavor{
+            grid-template-columns: 1fr;        /* no label column */
+            padding: 14px 16px;                 /* a hair tighter than default */
+        }
+        .info-tile.flavor .flavor-text{
+            font-style: italic;
+            font-size: 13.5px;
+            line-height: 1.45;
+            color: color-mix(in oklab, var(--fg) 70%, transparent);
+            text-align: center;                 /* looks nice under the tiles */
+        }
+
+        /* dark theme tweak (a touch brighter) */
+        [data-theme="dark"] .info-tile.flavor .flavor-text{
+            color: color-mix(in oklab, var(--fg) 85%, transparent);
+        }
+
 
     </style>
 </head>

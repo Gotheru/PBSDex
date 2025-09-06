@@ -1426,6 +1426,7 @@ function buildDetailHTML(p: Mon) {
          loading="lazy"
          decoding="async">
   `;
+    const flavor = (p as any).pokedex?.trim?.() || p.summary?.trim?.() || "";
 
     const detailTop = `
   <article class="detail mon-layout">
@@ -1456,6 +1457,14 @@ function buildDetailHTML(p: Mon) {
     }
         </div>
       </div>
+      
+      ${flavor ? `
+      <div class="info-tile flavor">
+        <div class="flavor-text">“${escapeHTML(flavor)}”</div>
+      </div>
+    ` : ""}
+
+      
     </div>
 
     <div class="mon-stats">
@@ -1523,14 +1532,14 @@ function renderTypeDetail(typeId: string) {
 
       <div class="type-grid">
         <section class="panel type-box">
-          <h2>Defending</h2>
+          <h2><b>Defending</b></h2>
           <div class="tip-row"><b>Immune to:</b> <span class="tip-icons">${def.immune.map(typeLinkIconTag).join("") || "—"}</span></div>
           <div class="tip-row"><b>Resists:</b>   <span class="tip-icons">${def.resist.map(typeLinkIconTag).join("") || "—"}</span></div>
           <div class="tip-row"><b>Weak to:</b>   <span class="tip-icons">${def.weak.map(typeLinkIconTag).join("")   || "—"}</span></div>
         </section>
 
         <section class="panel type-box">
-          <h2>Attacking</h2>
+          <h2><b>Attacking</b></h2>
           <div class="tip-row"><b>Super effective:</b>   <span class="tip-icons">${atk.superEff.map(typeLinkIconTag).join("") || "—"}</span></div>
           <div class="tip-row"><b>Not very effective:</b><span class="tip-icons">${atk.notVery.map(typeLinkIconTag).join("") || "—"}</span></div>
           <div class="tip-row"><b>No effect:</b>         <span class="tip-icons">${atk.noEffect.map(typeLinkIconTag).join("") || "—"}</span></div>
