@@ -258,7 +258,7 @@ function ensureSuggestBox(){
     if (!box){
         box = document.createElement('div');
         box.id = 'search-suggest';
-        box.innerHTML = `<ul class="suggest-list" role="listbox"></ul>`;
+        box.innerHTML = `<ul id="search-suggest-list" class="suggest-list" role="listbox"></ul>`;
         document.querySelector('.controls')?.appendChild(box);
     }
     return box as HTMLDivElement;
@@ -335,6 +335,11 @@ function renderSuggestions(q: string){
         });
     });
 
+    // inside renderSuggestions()
+    const hasResults = top.length > 0;
+    (document.querySelector('#q') as HTMLInputElement)?.setAttribute('aria-expanded', String(hasResults));
+
+
     // show & position
     box.style.display = top.length ? 'block' : 'none';
     positionSuggestBox();
@@ -363,6 +368,20 @@ function debounce<T extends (...args:any[]) => void>(fn: T, wait = 120){
 function wireSearchSuggest(){
     const input = document.querySelector<HTMLInputElement>('#q');
     if (!input) return;
+
+    // Kill native suggestions/autofill
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('spellcheck', 'false');
+
+    // ARIA combobox semantics (optional but nice)
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', 'search-suggest-list'); // make sure your UL uses this id
+    // Some Chrome builds still show history unless name is “unfamiliar”
+    if (!input.name) input.name = 'site-search-' + Math.random().toString(36).slice(2);
 
     let activeIndex = -1;
 
@@ -410,17 +429,17 @@ function wireSearchSuggest(){
     input.addEventListener('keydown', (e) => {
         const items = getItems();
         if (e.key === 'ArrowDown'){
-            e.preventDefault();
+            e.preventDefault(); e.stopPropagation();
             if (!items.length) return;
             setActive((activeIndex + 1) % items.length);
         } else if (e.key === 'ArrowUp'){
-            e.preventDefault();
+            e.preventDefault(); e.stopPropagation();
             if (!items.length) return;
             setActive((activeIndex - 1 + items.length) % items.length);
         } else if (e.key === 'Enter'){
             const box = document.getElementById('search-suggest');
             if (box && box.style.display !== 'none' && items.length){
-                e.preventDefault();
+                e.preventDefault(); e.stopPropagation();
                 const pick = items[activeIndex >= 0 ? activeIndex : 0];
                 pick?.click();   // navigateFromSuggestion() is wired in renderSuggestions()
             }
