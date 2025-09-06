@@ -59,7 +59,9 @@ let typeData: Record<string, TypeInfo> = {};
 
 // ---- searchbar ---- //
 
-const escapeHTML = (s:string) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+const escapeHTML = (s:string) =>
+    String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+
 function highlight(label:string, q:string){
     if (!q) return escapeHTML(label);
     const i = label.toLowerCase().indexOf(q.toLowerCase());
@@ -1408,6 +1410,8 @@ function buildDetailHTML(p: Mon) {
     </div>
   </article>`;
 
+    const evolutions = buildEvolutionHTML(p);
+
     const learnset = buildLevelUpTable(p);
     // Tutor + Machine moves combined
     const tutorAndTM = [
@@ -1420,7 +1424,7 @@ function buildDetailHTML(p: Mon) {
     const eggSection = buildMovesTableNoLv("Egg Moves", eggMovesFromRoot(p));
 
     // Return everything
-    return detailTop + learnset + tutorTMSection + eggSection;
+    return detailTop + evolutions + learnset + tutorTMSection + eggSection;
 
 }
 
@@ -1620,12 +1624,14 @@ function renderDetail(pokemon: Mon[], id: string) {
 type IntlPack = {
     moveTargets?: Record<string, string>;
     moveFlags?: Record<string, string>;
+    evoMethods?: Record<string, string>;     // ← NEW
 };
 
 let INTL: IntlPack = {};
 let INTL_IDX = {
     moveTargets: new Map<string, string>(),
-    moveFlags: new Map<string, string>()
+    moveFlags: new Map<string, string>(),
+    evoMethods: new Map<string, string>()    // ← NEW
 };
 
 const normKey = (s: string) => String(s || "").replace(/[\s_-]+/g, "").toLowerCase();
@@ -1643,14 +1649,19 @@ async function loadIntl() {
     if (!res.ok) return;
     INTL = await res.json();
 
-    // build normalized indexes for forgiving lookups
+    // rebuild indexes (for forgiving lookups)
     INTL_IDX.moveTargets.clear();
     INTL_IDX.moveFlags.clear();
+    INTL_IDX.evoMethods.clear();             // ← NEW
+
     for (const [k, v] of Object.entries(INTL.moveTargets || {})) {
         INTL_IDX.moveTargets.set(normKey(k), v);
     }
     for (const [k, v] of Object.entries(INTL.moveFlags || {})) {
         INTL_IDX.moveFlags.set(normKey(k), v);
+    }
+    for (const [k, v] of Object.entries(INTL.evoMethods || {})) {  // ← NEW
+        INTL_IDX.evoMethods.set(normKey(k), v);
     }
 }
 
@@ -1724,6 +1735,158 @@ function renderCurrent() {
     else if (route.type === "type"    && route.id) renderTypeDetail(route.id);
     else renderTable(pokemon);
 }
+/* ---------- evolutions ---------- */
+
+type EvoEdge = { from: string; to: string; method?: string; param?: string };
+
+// After you load INTL and MOVES:
+const EVO_TPL: Record<string, string> = (window as any).INTL?.evoMethods || {};
+
+function tpl(str: string, ctx: Record<string, string | number | undefined>) {
+    return str.replace(/\{(\w+)\}/g, (_, k) => String(ctx[k] ?? ""));
+}
+
+function moveNameFromId(id?: string): string {
+    if (!id) return "";
+    const m = movesIndex[id];
+    return m?.name || id;
+}
+
+
+// Build quick indexes after loading Pokémon
+let MON_BY_INTERNAL: Record<string, Mon> = {};
+let MON_BY_ID: Record<string, Mon> = {};
+
+function formatEvoMethod(method?: string, param?: string | number): string {
+    const mKey = normKey(method || "");                // lookup key
+    const rawTpl = INTL_IDX.evoMethods.get(mKey)
+        || INTL_IDX.evoMethods.get("default") // allow "default" or "DEFAULT"
+        || "{method} {param}";
+
+    // Fill a generic context; templates can pick what they need
+    const paramStr = (param == null ? "" : String(param));
+    const ctx: Record<string, string | number | undefined> = {
+        method: method || "",
+        param: paramStr,
+        level: paramStr,
+        location: paramStr,
+        item: paramStr,
+        move: method === "HasMove" ? moveNameFromId(paramStr) : paramStr
+    };
+
+    const out = tpl(rawTpl, ctx).trim();
+    // Optional: warn if we fell back
+    if (!INTL_IDX.evoMethods.has(mKey)) {
+        // console.warn(`[evo] Unknown method "${method}", using DEFAULT →`, out);
+    }
+    return out;
+}
+
+
+function miniIcon48(internalName: string) {
+    const url = new URL(`./images/icons/${internalName}.png`, document.baseURI).toString();
+    // 128×64 sheets: we show the left half; 48×48 display, pixelated
+    return `<img class="evo-mini" src="${url}" alt="" loading="lazy"
+              style="width:48px;height:48px;object-fit:cover;object-position:left center;image-rendering:pixelated;border-radius:8px;">`;
+}
+
+// Return [baseInternal, stages, edgeLabelMap]
+function buildEvolutionStages(current: Mon): {
+    base: string;
+    stages: string[][];
+    edgeLabel: Map<string, string>; // childInternal -> method text
+} {
+    // 1) ascend to base via prevo
+    let base = current.internalName;
+    const guard = new Set<string>();
+    while (true) {
+        if (guard.has(base)) break;
+        guard.add(base);
+        const up = MON_BY_INTERNAL[base]?.prevo;
+        if (!up) break;
+        base = up;
+    }
+
+    // 2) build parent->edges from dataset
+    const edgesByParent = new Map<string, EvoEdge[]>();
+    Object.values(MON_BY_INTERNAL).forEach(m => {
+        const parent = m.internalName;
+        const evos = (m.evolutions || []) as any[];
+        if (!Array.isArray(evos) || evos.length === 0) return;
+        for (const e of evos) {
+            const to = String(e.to || "").trim();
+            if (!to) continue;
+            const edge: EvoEdge = { from: parent, to, method: e.method, param: e.param };
+            const arr = edgesByParent.get(parent) || [];
+            arr.push(edge);
+            edgesByParent.set(parent, arr);
+        }
+    });
+
+    // 3) BFS layering from base, dedup, keep edge labels for children
+    const stages: string[][] = [];
+    const visited = new Set<string>();
+    const edgeLabel = new Map<string, string>(); // child -> label (first seen)
+
+    let layer: string[] = [base];
+    visited.add(base);
+    stages.push(layer);
+
+    while (true) {
+        const nextSet = new Set<string>();
+        for (const parent of layer) {
+            const edges = edgesByParent.get(parent) || [];
+            for (const e of edges) {
+                const child = e.to;
+                if (!MON_BY_INTERNAL[child]) continue;  // skip unknown
+                if (!edgeLabel.has(child)) {
+                    edgeLabel.set(child, formatEvoMethod(e.method, e.param));
+                }
+                if (!visited.has(child)) {
+                    visited.add(child);
+                    nextSet.add(child);
+                }
+            }
+        }
+        const next = Array.from(nextSet);
+        if (!next.length) break;
+        stages.push(next);
+        layer = next;
+    }
+
+    return { base, stages, edgeLabel };
+}
+
+function buildEvolutionHTML(current: Mon): string {
+    const { stages, edgeLabel } = buildEvolutionStages(current);
+    if (!stages.length) return "";
+
+    const stageRows = stages.map((internals, idx) => {
+        const items = internals.map(intName => {
+            const m = MON_BY_INTERNAL[intName];
+            if (!m) return "";
+            const link = `#/mon/${encodeURIComponent(m.id)}`;
+            const method = idx > 0 ? (edgeLabel.get(intName) || "") : "";
+            return `
+        <div class="evo-item">
+          <a class="evo-link" href="${link}" title="${escapeHTML(m.name)}">
+            ${miniIcon48(m.internalName)}
+            <div class="evo-name">${escapeHTML(m.name)}</div>
+          </a>
+          ${method ? `<div class="evo-method">${escapeHTML(method)}</div>` : ``}
+        </div>`;
+        }).join("");
+        return `<div class="evo-stage">${items}</div>`;
+    }).join(`<div class="evo-sep">↓</div>`);
+
+    return `
+    <section class="panel evo-line">
+      <h2>Evolution line</h2>
+      <div class="evo-graph">
+        ${stageRows}
+      </div>
+    </section>`;
+}
 
 
 /* ---------- start ---------- */
@@ -1740,6 +1903,12 @@ async function start() {
 
     const pokemon = await loadPokemon();
     ALL_POKEMON = pokemon;
+    MON_BY_INTERNAL = {};
+    MON_BY_ID = {};
+    for (const m of ALL_POKEMON) {
+        MON_BY_INTERNAL[m.internalName] = m;
+        MON_BY_ID[m.id] = m;
+    }
     byInternal = new Map(pokemon.map(m => [m.internalName, m]));
 
     buildFilters(pokemon);

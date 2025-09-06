@@ -44,5 +44,19 @@
     "TramplesMinimize": "Damage doubles and no accuracy check is done if the target has used Minimize while active.",
     "Twice": "Hits twice.",
     "Wind": "Activates the Wind Power and Wind Rider Abilities."
+  },
+  "evoMethods": {
+    "Level": "Level {level}",
+    "LevelDay": "Level {level} (day)",
+    "LevelNight": "Level {level} (night)",
+    "Happiness": "Level up with high friendship",
+    "HasMove": "Level up knowing {move}",
+    "Item": "Use {item}",
+    "EeveeItem": "Level 28 and use {item}",
+    "Trade": "Trade",
+    "TradeItem": "Trade while holding {item}",
+    "Location": "Level up at special location #{location}",
+    "NightHoldItem": "Level up at night while holding {item}",
+    "DEFAULT": "{method} {param}"
   }
 }
