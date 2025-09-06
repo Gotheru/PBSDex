@@ -878,6 +878,81 @@
             image-rendering: crisp-edges; /* Firefox */
         }
 
+        /* Horizontal line mode */
+        .evo-graph--horizontal {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;           /* allow wrap on narrow screens */
+            gap: 0.5rem 1rem;
+        }
+        .evo-graph--horizontal .evo-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .evo-arrow {
+            flex: 0 0 auto;
+            font-size: 1.25rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .evo-graph.evo-graph--horizontal {
+            display: flex;              /* override any grid/block on .evo-graph */
+            justify-content: center;    /* center across the row */
+            align-items: flex-start;     /* vertical align of items in the row */
+            align-content: center;       /* when wrapping, center the rows as well */
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+        }
+        /* optional: keep each item’s content centered */
+        .evo-graph--horizontal .evo-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .evo-graph--horizontal .evo-arrow {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+            line-height: 1;
+        }
+
+        /* Horizontal container */
+        .evo-graph.evo-graph--horizontal{
+            display:flex;
+            justify-content:center;
+            align-items:flex-start;   /* items stay top-aligned */
+            flex-wrap:wrap;
+            gap:0.5rem 1rem;
+        }
+
+        /* Keep each card centered internally */
+        .evo-graph--horizontal .evo-item{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            text-align:center;
+        }
+
+        /* The arrow sits in a box as tall as the icon area */
+        .evo-graph--horizontal .evo-arrow{
+            align-self:center;                 /* center vs tallest columns */
+            display:flex;                      /* center the SVG inside */
+            align-items:center;
+            height:var(--icon-h,32px);         /* match icon height */
+            padding:0 .25rem;
+            line-height:1;                     /* avoid extra font leading */
+        }
+
+        /* Size the SVG arrow */
+        .evo-graph--horizontal .evo-arrow svg{
+            display:block;
+            width:20px;
+            height:20px;                       /* stays visually centered */
+        }
+
+
 
     </style>
 </head>

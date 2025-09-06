@@ -22,17 +22,11 @@ function buildLevelUpTable(p: Mon): string {
     const rows = list.map(({ level, move }) => {
         const mv = moveInfo(move);
         const levelLabel = (level === 0) ? "Evolve" : (level === 1 ? "—" : String(level));
-
         const typeIcon = mv?.type ? typeLinkIconTag(mv.type) : "";
         const catIcon  = categoryIconTag(mv?.category);
-
-        // Power: em-dash when null/undefined or explicitly 1 (per your rule) or Status
         const power = (mv?.category === "Status" || mv?.power == null || mv?.power === 1) ? "—" : String(mv.power ?? "—");
-        // Accuracy: em-dash when 0 (always hits) or missing
         const acc   = (mv?.accuracy == null || mv?.accuracy === 0) ? "—" : String(mv.accuracy);
-        // PP: should always be present, fallback just in case
         const pp    = (mv?.pp ?? "—");
-
         const desc  = mv?.description || "";
 
         return `
@@ -72,9 +66,7 @@ function buildLevelUpTable(p: Mon): string {
 }
 
 
-// --- stat bar helpers ---
-// Using a broader range keeps tall stats from capping visually too early.
-const STAT_MAX = 200; // 0..200 → 10 is VERY low, 181 ≈ 90% width
+const STAT_MAX = 200;
 
 export function statBarHTML(v: number) {
     const clamped = Math.max(0, Math.min(STAT_MAX, v));
@@ -84,11 +76,11 @@ export function statBarHTML(v: number) {
 
     // Make low numbers look deeper/richer red:
     // lower lightness at the low-end; slightly higher at the top-end
-    const l1 = (36 + 24 * t).toFixed(1);           // 48% → 60%
-    const l2 = (26 + 24 * t).toFixed(1);           // 38% → 50%
+    const l1 = (36 + 24 * t).toFixed(1);
+    const l2 = (26 + 24 * t).toFixed(1);
     // Saturation slightly eases at the top so cyan isn’t neon
-    const s1 = (96 - 10 * t).toFixed(1);           // 96% → 86%
-    const s2 = (92 - 10 * t).toFixed(1);           // 92% → 82%
+    const s1 = (96 - 10 * t).toFixed(1);
+    const s2 = (92 - 10 * t).toFixed(1);
 
     return `<div class="statbar" style="--w:${pct}%;--h:${hue};--s1:${s1}%;--l1:${l1}%;--s2:${s2}%;--l2:${l2}%"></div>`;
 }
@@ -256,16 +248,26 @@ export function buildEvolutionStages(current: Mon): {
 }
 
 export function buildEvolutionHTML(current: Mon): string {
-    const { stages, edgeLabel } = buildEvolutionStages(current);
-    if (!stages.length) return "";
+  const { stages, edgeLabel } = buildEvolutionStages(current);
+  if (!stages.length) return "";
 
-    const stageRows = stages.map((internals, idx) => {
-        const items = internals.map(intName => {
-            const m = MON_BY_INTERNAL[intName];
-            if (!m) return "";
-            const link = `#/mon/${encodeURIComponent(m.id)}`;
-            const method = idx > 0 ? (edgeLabel.get(intName) || "") : "";
-            return `
+  const isLine = stages.every(s => s.length === 1);
+
+  if (isLine) {
+    const ARROW_SVG = `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 12h12m0 0-4-4m4 4-4 4"
+            fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    const items = stages.map((internals, idx) => {
+      const intName = internals[0];
+      const m = MON_BY_INTERNAL[intName];
+      if (!m) return "";
+      const link = `#/mon/${encodeURIComponent(m.id)}`;
+      const method = idx > 0 ? (edgeLabel.get(intName) || "") : "";
+      return `
         <div class="evo-item">
           <a class="evo-link" href="${link}" title="${escapeHTML(m.name)}">
             ${miniIcon64(m.internalName)}
@@ -273,13 +275,38 @@ export function buildEvolutionHTML(current: Mon): string {
           </a>
           ${method ? `<div class="evo-method">${escapeHTML(method)}</div>` : ``}
         </div>`;
-        }).join("");
-        return `<div class="evo-stage">${items}</div>`;
-    }).join(`<div class="evo-sep">↓</div>`);
+    }).join(`<div class="evo-arrow" aria-hidden="true">${ARROW_SVG}</div>`);
 
     return `
+      <section class="panel evo-line">
+        <div class="evo-graph evo-graph--horizontal" style="--icon-h:32px">
+          ${items}
+        </div>
+      </section>`;
+
+  }
+
+  // Default: vertical/staged layout with separators
+  const stageRows = stages.map((internals, idx) => {
+    const items = internals.map(intName => {
+      const m = MON_BY_INTERNAL[intName];
+      if (!m) return "";
+      const link = `#/mon/${encodeURIComponent(m.id)}`;
+      const method = idx > 0 ? (edgeLabel.get(intName) || "") : "";
+      return `
+        <div class="evo-item">
+          <a class="evo-link" href="${link}" title="${escapeHTML(m.name)}">
+            ${miniIcon64(m.internalName)}
+            <div class="evo-name">${escapeHTML(m.name)}</div>
+          </a>
+          ${method ? `<div class="evo-method">${escapeHTML(method)}</div>` : ``}
+        </div>`;
+    }).join("");
+    return `<div class="evo-stage">${items}</div>`;
+  }).join(`<div class="evo-sep">↓</div>`);
+
+  return `
     <section class="panel evo-line">
-      <h2>Evolution line</h2>
       <div class="evo-graph">
         ${stageRows}
       </div>
