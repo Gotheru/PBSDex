@@ -162,15 +162,17 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
     header_idx: Optional[int] = None
 
     with path.open("r", encoding="utf-8", errors="ignore") as f:
+        num = 1
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"): continue
-
             if line.startswith("["):
                 if cur:
                     # ── finalize previous section ─────────────────────────────
                     cur["types"] = extract_types(cur_raw or {})
                     cur["raw"] = cur_raw
+                    cur["num"] = num
+                    num += 1
                     entries.append(cur)
                 header, idx = parse_section_header(line)
                 cur = {"_header": header, "_index": idx}
@@ -187,6 +189,7 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
         # ── finalize last section ────────────────────────────────────────────
         cur["types"] = extract_types(cur_raw or {})
         cur["raw"] = cur_raw
+        cur["num"] = num
         entries.append(cur)
 
     # … the rest of parse_pokemon_pbs stays the same …
@@ -245,6 +248,9 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
 
             # keep full raw for future reference
             "raw": r,
+
+            # pokedex number
+            "num": e["num"]
         }
 
         # cleanup empties

@@ -164,6 +164,8 @@ async function loadPokemon() {
             evolutions: Array.isArray(e.evolutions) ? e.evolutions : [],
             isForm: !!e.isForm,
             baseInternal: e.baseInternal,
+
+            num: e.num,
         };
     });
 

@@ -1,7 +1,7 @@
 import { eggMovesFromRoot, MON_BY_INTERNAL, moveDisplayName, moveInfo } from "../core/data";
 import { EvoEdge, Mon, Stats } from "../core/types";
 import { escapeHTML } from "../ui/suggest";
-import { abilityLinkHTML, categoryIconTag, frontCandidates, miniIcon48, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML } from "../util/assets";
+import { abilityLinkHTML, categoryIconTag, frontCandidates, miniIcon64, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML } from "../util/assets";
 import { formatEvoMethod } from "../util/fmt";
 import { buildMonLocationsHTML } from "./location";
 import { buildMovesTableNoLv } from "./move";
@@ -109,6 +109,7 @@ export function buildDetailHTML(p: Mon) {
          decoding="async">
   `;
     const flavor = (p as any).pokedex?.trim?.() || p.summary?.trim?.() || "";
+    const dexNo = (p as any).num;
 
     const detailTop = `
   <article class="detail mon-layout">
@@ -142,6 +143,7 @@ export function buildDetailHTML(p: Mon) {
       
       ${flavor ? `
       <div class="info-tile flavor">
+        <div class="info-label"><center>Dex entry No. ${dexNo}</center></div>
         <div class="flavor-text">“${escapeHTML(flavor)}”</div>
       </div>
     ` : ""}
@@ -266,7 +268,7 @@ export function buildEvolutionHTML(current: Mon): string {
             return `
         <div class="evo-item">
           <a class="evo-link" href="${link}" title="${escapeHTML(m.name)}">
-            ${miniIcon48(m.internalName)}
+            ${miniIcon64(m.internalName)}
             <div class="evo-name">${escapeHTML(m.name)}</div>
           </a>
           ${method ? `<div class="evo-method">${escapeHTML(method)}</div>` : ``}

@@ -175,7 +175,7 @@ export function typingIconsLinkedHTML(types: string[]) {
     return `<span class="type-icons">${types.map(typeLinkIconTag).join("")}</span>`;
 }
 
-export function miniIcon48(monOrName: Mon | string) {
+export function miniIcon64(monOrName: Mon | string) {
     const p = _asMon(monOrName);
     const urls = iconCandidates(p);
     const all = urls.join("|").replace(/"/g, "&quot;");
@@ -185,7 +185,7 @@ export function miniIcon48(monOrName: Mon | string) {
                data-si="0"
                alt=""
                loading="lazy"
-               style="width:48px;height:48px;object-fit:cover;object-position:left center;image-rendering:pixelated;border-radius:8px;"
+               style="width:64px;height:64px;object-fit:cover;object-position:left center;image-rendering:pixelated;border-radius:8px;"
                onerror="(function(el){
                  var a=(el.getAttribute('data-srcs')||'').split('|');
                  var i=+el.getAttribute('data-si')||0; i++;

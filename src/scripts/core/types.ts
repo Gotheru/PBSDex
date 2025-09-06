@@ -22,9 +22,12 @@ export type Mon = {
     evolutions?: Evolution[];
 
     // relations
-    prevo?: string;            // ← NEW
+    prevo?: string;
     isForm?: boolean;
     baseInternal?: string;
+
+    // add dex number
+    num: number;
 };
 
 export type AbilityInfo = { name: string; description?: string };
