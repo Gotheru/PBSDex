@@ -6,22 +6,38 @@ import { typeCandidates } from "./typing";
 export const assetUrl = (rel: string) => new URL(rel.replace(/^\//, ""), document.baseURI).toString();
 
 // Mini sprite (left 64px of a 128×64 sheet) — suggestions dropdown
-export function miniIconHTML(monOrName: Mon | string){
+export function miniIconHTML(monOrName: Mon | string) {
+  const p = _asMon(monOrName);
+  const urls = iconCandidates(p);
+
+  // tiny helpers
+  const esc = (s: string) =>
+    String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const name = String(p.id ?? "").trim();
+  const href = `#/mon/${encodeURIComponent(name)}`.toLowerCase();
+
+  const all = urls.join("|").replace(/"/g, "&quot;");
+
+  return `<a class="suggest-icon-link" href="${href}" aria-label="${esc(name)}" title="${esc(name)}">
+    <img class="suggest-icon"
+         src="${urls[0]}"
+         data-srcs="${all}"
+         data-si="0"
+         alt="${esc(name)}"
+         loading="lazy"
+         onerror="(function(el){
+           var a=(el.getAttribute('data-srcs')||'').split('|');
+           var i=+el.getAttribute('data-si')||0; i++;
+           if(i<a.length){el.setAttribute('data-si',i); el.src=a[i];}
+           else{el.style.display='none';}
+         })(this)">
+  </a>`;
+}
+
+
+export function miniIconLinkHTML(monOrName: Mon | string) {
     const p = _asMon(monOrName);
     const urls = iconCandidates(p);
-    const all = urls.join("|").replace(/"/g, "&quot;");
-    return `<img class="suggest-icon"
-               src="${urls[0]}"
-               data-srcs="${all}"
-               data-si="0"
-               alt=""
-               loading="lazy"
-               onerror="(function(el){
-                 var a=(el.getAttribute('data-srcs')||'').split('|');
-                 var i=+el.getAttribute('data-si')||0; i++;
-                 if(i<a.length){el.setAttribute('data-si',i); el.src=a[i];}
-                 else{el.style.display='none';}
-               })(this)">`;
 }
 
 export function smallTypeIcons(types: string[]){

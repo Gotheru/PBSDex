@@ -180,30 +180,13 @@ export function buildTableHTML(list: Mon[]) {
 </table>`;
 }
 
-export function buildFilters(pokemon: Mon[]) {
-    const typeSel = document.querySelector<HTMLSelectElement>("#type");
-    if (!typeSel) return;
-    typeSel.innerHTML = '<option value="">All types</option>';
-    const typeSet = new Set<string>();
-    pokemon.forEach(p => p.types.forEach(t => typeSet.add(t)));
-    [...typeSet].sort().forEach(t => {
-        const opt = document.createElement("option");
-        opt.value = t;
-        opt.textContent = t;
-        typeSel.appendChild(opt);
-    });
-}
-
 export function renderTable(pokemon: Mon[]) {
     const grid    = document.querySelector<HTMLElement>("#grid");
-    const typeSel = document.querySelector<HTMLSelectElement>("#type");
     const count   = document.querySelector<HTMLElement>("#count");
-    if (!grid || !typeSel || !count) return;
+    if (!grid || !count) return;
 
-    const typeFilter = typeSel.value;     // keep type filter if you still want it
 
     const list = pokemon
-        .filter(p => !typeFilter || p.types.includes(typeFilter))
         .sort((a, b) => cmp(a, b, sortState.key, sortState.dir));
 
     count.textContent = `${list.length} result${list.length === 1 ? "" : "s"}`;

@@ -869,6 +869,14 @@
 
         /* optional: name cell stays tight */
         .dex-table td.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+
+        .suggest-icon {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;   /* Chrome/Safari */
+            image-rendering: crisp-edges; /* Firefox */
+        }
 
 
     </style>
@@ -878,7 +886,6 @@
     <div class="wrap">
         <div class="controls">
             <input id="q" placeholder="Search name, type, ability…" />
-            <select id="type"><option value="">All types</option></select>
             <button id="theme-toggle" class="theme-btn" title="Toggle dark mode">🌙</button>
         </div>
     </div>

@@ -3,14 +3,13 @@ import { ALL_POKEMON, loadAll } from './core/data';
 import { setupNavStack, renderCurrent, navigateToMon } from './core/router';
 import { bindAbilityTooltips, bindTypeTooltips } from './ui/tooltip';
 import { buildSearchIndex, wireSearchSuggest } from './ui/suggest';
-import { buildFilters, renderTable } from './ui/table';
+import { renderTable } from './ui/table';
 
 export async function start() {
     initTheme();
 
     await loadAll()
 
-    buildFilters(ALL_POKEMON);
     bindAbilityTooltips()
     bindTypeTooltips()
 
@@ -23,10 +22,8 @@ export async function start() {
     if (grid) grid.setAttribute("data-all-pokemon", JSON.stringify(ALL_POKEMON));
 
     const q = document.querySelector<HTMLInputElement>("#q");
-    const typeSel = document.querySelector<HTMLSelectElement>("#type");
     const rerender = () => renderTable(ALL_POKEMON);
     // q?.addEventListener("input", rerender);
-    typeSel?.addEventListener("change", rerender);
 
     grid?.addEventListener('click', (e) => {
         if (!(e.target as HTMLElement).closest('.mon-link')) return; // only our links
