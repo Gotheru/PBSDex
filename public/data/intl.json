@@ -55,7 +55,7 @@
     "EeveeItem": "Level 28 and use {item}",
     "Trade": "Trade",
     "TradeItem": "Trade while holding {item}",
-    "Location": "Level up at special location #{location}",
+    "Location": "Level up at {location}",
     "NightHoldItem": "Level up at night while holding {item}",
     "DEFAULT": "{method} {param}"
   }

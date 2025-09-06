@@ -36,7 +36,7 @@ let byInternal = new Map<string, Mon>();
 
 type AbilityInfo = { name: string; description?: string };
 type AbilityMap = Record<string, AbilityInfo>;
-type SuggestKind = 'mon' | 'move' | 'ability' | 'type';
+type SuggestKind = 'mon' | 'move' | 'ability' | 'type' | 'loc';
 type SuggestItem = {
     kind: SuggestKind;
     id: string;           // internal id (mon.id for Pokémon; ability/move/type internal)
@@ -44,9 +44,41 @@ type SuggestItem = {
     sub?: string;         // optional subtext
     iconHTML?: string;    // optional left icon HTML
     score?: number;       // ranking score
+    search: string;
 };
 
 let SEARCH_INDEX: SuggestItem[] = [];
+
+// ---- types ----
+type EncounterRow = [number, string, number, number]; // [chance, mon, min, max]
+type EncounterLocation = {
+    id: string;            // "003"
+    name: string;          // "Forested Cavern"
+    encounters: Record<string, EncounterRow[]>; // e.g. { Land: [...], Water: [...] }
+};
+
+// ---- global registry ----
+let LOCS: Record<string, EncounterLocation> = {};
+
+// Resolve a location display name (fallback to "#id")
+const locationName = (locId?: string): string =>
+    (locId && LOCS[locId]?.name) ? LOCS[locId].name : (locId ? `#${locId}` : "");
+
+// ---- loader ----
+async function loadEncounters(): Promise<void> {
+    const url = new URL("./data/encounters.json", document.baseURI).toString();
+    const res = await fetch(url, { cache: "no-cache" });
+    if (!res.ok) return;
+    const data = await res.json();
+    // Expect an object keyed by id; if an array is ever produced, re-key it.
+    if (Array.isArray(data)) {
+        const m: Record<string, EncounterLocation> = {};
+        for (const loc of data) if (loc?.id) m[loc.id] = loc;
+        LOCS = m;
+    } else {
+        LOCS = data as Record<string, EncounterLocation>;
+    }
+}
 
 
 // ---- types.json loader ----
@@ -166,6 +198,7 @@ function buildSearchIndex(){
             label: p.name,
             sub: p.types?.join(' • ') || '',
             iconHTML: miniIconHTML(p.internalName),
+            search: makeSearchKey(p.name)
         });
     }
 
@@ -177,6 +210,7 @@ function buildSearchIndex(){
             label: mv.name || mid,
             sub: (mv.type || mv.category) ? [mv.type, mv.category].filter(Boolean).join(' • ') : '',
             iconHTML: moveSmallIcon(mid),
+            search: makeSearchKey(mv.name || mid),
         });
     }
 
@@ -187,6 +221,7 @@ function buildSearchIndex(){
             id: aid,
             label: a.name || aid,
             sub: a.description || '',
+            search: makeSearchKey(a.name || aid),
         });
     }
 
@@ -197,8 +232,23 @@ function buildSearchIndex(){
             id: tid,
             label: typeData[tid]?.name || tid,
             iconHTML: typeIconTag(tid).replace('class="type-icon"', 'class="type-icon" style="width:18px;height:18px"'),
+            search: typeData[tid]?.name || tid,
         });
     }
+
+    // Locations
+    for (const [lid, loc] of Object.entries(LOCS || {})) {
+        const name = (loc?.name || `#${lid}`).trim();
+        out.push({
+            kind: 'loc',
+            id: lid,
+            label: name,
+            sub: Object.keys(loc?.encounters || {}).join(', '), // e.g., "Land, Water"
+            iconHTML: `<span class="suggest-pin" aria-hidden="true">📍</span>`,
+            search: makeSearchKey(name),
+        });
+    }
+
 
     SEARCH_INDEX = out;
 }
@@ -230,31 +280,39 @@ function navigateFromSuggestion(s: SuggestItem){
     else if (s.kind === 'ability') location.hash = `#/ability/${encodeURIComponent(s.id)}`;
     else if (s.kind === 'move')    location.hash = `#/move/${encodeURIComponent(s.id)}`;
     else if (s.kind === 'type')    location.hash = `#/type/${encodeURIComponent(s.id)}`;
+    else if (s.kind === 'loc')     location.hash = `#/loc/${encodeURIComponent(s.id)}`;
 }
 
 function renderSuggestions(q: string){
+    const nq = makeSearchKey(q);
     const box = ensureSuggestBox();
     const ul  = box.querySelector('.suggest-list') as HTMLUListElement;
-    if (!q.trim()){
+
+    if (!nq || !nq.trim()){
         box.style.display = 'none';
         ul.innerHTML = '';
         return;
     }
 
-    // score & pick top N
+    // score & pick top N (score against normalized label)
     const scored: SuggestItem[] = [];
     for (const it of SEARCH_INDEX){
-        const s = scoreMatch(it.label, q);
-        if (s >= 0) scored.push({...it, score: s});
+        const hay = (it as any).search || makeSearchKey(it.label);   // ← normalized
+        const s   = scoreMatch(hay, nq);                              // ← use normalized haystack
+        if (s >= 0) scored.push({ ...it, score: s } as any);
     }
 
-    // optional: prefer Pokémon > Moves > Abilities > Types when scores tie
-    const kindOrder: Record<SuggestKind, number> = { mon:0, move:1, ability:2, type:3 };
-    scored.sort((a,b)=> (b.score!-a.score!) || (kindOrder[a.kind]-kindOrder[b.kind]) || a.label.localeCompare(b.label));
+    // prefer Pokémon > Moves > Abilities > Types > Locations on ties
+    const kindOrder: Record<string, number> = { mon:0, move:1, ability:2, type:3, loc:4, location:4 };
+    scored.sort((a:any,b:any)=>
+        (b.score - a.score) ||
+        ((kindOrder[a.kind] ?? 999) - (kindOrder[b.kind] ?? 999)) ||
+        a.label.localeCompare(b.label)
+    );
 
     const top = scored.slice(0, 12);
 
-    ul.innerHTML = top.map((s, idx) => `
+    ul.innerHTML = top.map((s:any, idx:number) => `
     <li class="suggest-item" role="option" data-kind="${s.kind}" data-id="${escapeHTML(s.id)}" data-idx="${idx}">
       ${s.iconHTML || ''}
       <div class="suggest-main">
@@ -282,6 +340,7 @@ function renderSuggestions(q: string){
     positionSuggestBox();
 }
 
+
 function hideSuggestions(){
     const box = document.getElementById('search-suggest') as HTMLDivElement | null;
     if (box){
@@ -292,16 +351,33 @@ function hideSuggestions(){
 }
 
 
+// tiny debounce so we don't recompute on every keystroke
+function debounce<T extends (...args:any[]) => void>(fn: T, wait = 120){
+    let t: number | undefined;
+    return (...args: Parameters<T>) => {
+        if (t) window.clearTimeout(t);
+        t = window.setTimeout(() => fn(...args), wait);
+    };
+}
+
 function wireSearchSuggest(){
     const input = document.querySelector<HTMLInputElement>('#q');
     if (!input) return;
 
     let activeIndex = -1;
 
+    const getListEl = () =>
+        document.querySelector('#search-suggest .suggest-list') as HTMLUListElement | null;
+
+    const getItems = () => {
+        const ul = getListEl();
+        return ul ? Array.from(ul.querySelectorAll<HTMLLIElement>('.suggest-item')) : [];
+    };
+
     const setActive = (i:number) => {
-        const ul = document.querySelector('#search-suggest .suggest-list') as HTMLUListElement | null;
+        const ul = getListEl();
         if (!ul) return;
-        const items = Array.from(ul.querySelectorAll('.suggest-item'));
+        const items = getItems();
         items.forEach(el => el.classList.remove('active'));
         if (i >= 0 && i < items.length){
             items[i].classList.add('active');
@@ -310,14 +386,29 @@ function wireSearchSuggest(){
         activeIndex = i;
     };
 
-    input.addEventListener('input', () => {
-        renderSuggestions(input.value);
+    const debouncedRender = debounce((val:string) => {
+        renderSuggestions(val);    // renders dropdown only (main table stays untouched)
         setActive(-1);
+        positionSuggestBox();
+    }, 120);
+
+    // show suggestions as you type
+    input.addEventListener('input', () => {
+        debouncedRender(input.value);
     });
 
+    // also show when focusing an already-typed query
+    input.addEventListener('focus', () => {
+        if (input.value.trim()){
+            renderSuggestions(input.value);
+            setActive(-1);
+            positionSuggestBox();
+        }
+    });
+
+    // keyboard navigation
     input.addEventListener('keydown', (e) => {
-        const ul = document.querySelector('#search-suggest .suggest-list') as HTMLUListElement | null;
-        const items = ul ? Array.from(ul.querySelectorAll('.suggest-item')) : [];
+        const items = getItems();
         if (e.key === 'ArrowDown'){
             e.preventDefault();
             if (!items.length) return;
@@ -330,15 +421,15 @@ function wireSearchSuggest(){
             const box = document.getElementById('search-suggest');
             if (box && box.style.display !== 'none' && items.length){
                 e.preventDefault();
-                const pick = (activeIndex >= 0 ? items[activeIndex] : items[0]) as HTMLLIElement;
-                pick?.click();
+                const pick = items[activeIndex >= 0 ? activeIndex : 0];
+                pick?.click();   // navigateFromSuggestion() is wired in renderSuggestions()
             }
         } else if (e.key === 'Escape'){
             hideSuggestions();
         }
     });
 
-    // hide when clicking elsewhere or navigating
+    // hide when clicking elsewhere
     document.addEventListener('click', (e) => {
         const box = document.getElementById('search-suggest');
         if (!box) return;
@@ -350,6 +441,7 @@ function wireSearchSuggest(){
     window.addEventListener('scroll', positionSuggestBox, { passive: true });
     window.addEventListener('hashchange', hideSuggestions);
 }
+
 
 
 // ---- combined defensive matchup for 1–2 types ----
@@ -684,12 +776,68 @@ function typingIconsHTML(types: string[]): string {
 // generic fallback wire-up you already added; reuse it for type icons too:
 // wireFallbacks(root, "img.type-icon");
 
+// --- Numeric-aware search normalizer ---
+// lowercases, strips accents, converts number words & roman numerals to digits
+function makeSearchKey(s: string): string {
+    if (!s) return "";
+    s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // strip accents
+    s = s.replace(/[-–—]/g, " ");                           // hyphens to spaces
+    const lower = s.toLowerCase();
 
-function formatTyping(types: string[]): string {
-    if (!types || types.length === 0) return "—";
-    const t1 = types[0] ?? "";
-    const t2 = types[1] ?? "";
-    return t2 ? `${t1} | ${t2}` : t1;
+    // replace roman numerals (standalone tokens) with digits
+    const romanized = lower.replace(/\b[mcdlxvi]+\b/gi, (t) => {
+        const n = romanToInt(t);
+        return n ? String(n) : t.toLowerCase();
+    });
+
+    // replace number words up to 99 (handles "twenty one", "twenty-one", "sixteen")
+    return wordsToDigits(romanized).replace(/\s+/g, " ").trim();
+}
+
+function romanToInt(str: string): number {
+    const map: Record<string, number> = {i:1,v:5,x:10,l:50,c:100,d:500,m:1000};
+    let n = 0, prev = 0;
+    for (let i = str.length - 1; i >= 0; i--) {
+        const v = map[str[i].toLowerCase()] || 0;
+        n += v < prev ? -v : v;
+        prev = v;
+    }
+    return n;
+}
+
+function wordsToDigits(s: string): string {
+    const ones: Record<string, number> = {
+        zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9,
+        ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19
+    };
+    const tens: Record<string, number> = {
+        twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90
+    };
+
+    const tok = s.split(/\s+/);
+    const out: string[] = [];
+    for (let i = 0; i < tok.length; i++) {
+        const t = tok[i];
+        if (t in ones) { out.push(String(ones[t])); continue; }
+
+        if (t in tens) {
+            let val = tens[t];
+            const next = tok[i+1] || "";
+            if (next in ones) { val += ones[next]; i++; }
+            out.push(String(val));
+            continue;
+        }
+
+        // handle hyphenated tens-ones like "twenty-one"
+        const m = t.match(/^([a-z]+)-([a-z]+)$/i);
+        if (m && (m[1].toLowerCase() in tens) && (m[2].toLowerCase() in ones)) {
+            out.push(String(tens[m[1].toLowerCase()] + ones[m[2].toLowerCase()]));
+            continue;
+        }
+
+        out.push(t);
+    }
+    return out.join(" ");
 }
 
 const toArray = (x: unknown): string[] => {
@@ -708,6 +856,48 @@ const slugify = (s: string) =>
     (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 // ---------- more helpers ----------
+
+function summarizeEncounterType(rows: EncounterRow[]): {
+    list: { intName: string; chancePct: number; minLvl: number; maxLvl: number }[];
+    total: number;
+} {
+    const acc = new Map<string, { chance: number; min: number; max: number }>();
+    let total = 0;
+
+    for (const [chance, mon, lo, hi] of rows) {
+        total += chance;
+        const cur = acc.get(mon);
+        if (cur) {
+            cur.chance += chance;
+            cur.min = Math.min(cur.min, lo);
+            cur.max = Math.max(cur.max, hi);
+        } else {
+            acc.set(mon, { chance, min: lo, max: hi });
+        }
+    }
+
+    const list = Array.from(acc, ([intName, v]) => ({
+        intName,
+        chancePct: total ? Math.round((v.chance * 100) / total) : 0,
+        minLvl: v.min,
+        maxLvl: v.max,
+    }));
+
+    list.sort((a, b) =>
+        b.chancePct - a.chancePct ||
+        (MON_BY_INTERNAL[a.intName]?.name || a.intName)
+            .localeCompare(MON_BY_INTERNAL[b.intName]?.name || b.intName)
+    );
+
+    return { list, total };
+}
+
+const fmtLv = (min:number, max:number) => (min === max ? `Lv. ${min}` : `Lv. ${min}–${max}`);
+
+
+const locHref = (id: string) => `#/loc/${encodeURIComponent(id)}`;
+const monHref = (m: Mon) => `#/mon/${encodeURIComponent(m.id)}`;
+
 
 function scrollToTopNow() {
     // Window/body scroll:
@@ -1347,73 +1537,72 @@ function buildFilters(pokemon: Mon[]) {
 }
 
 function renderTable(pokemon: Mon[]) {
-    const grid = document.querySelector<HTMLElement>("#grid");
-    const q = document.querySelector<HTMLInputElement>("#q");
+    const grid    = document.querySelector<HTMLElement>("#grid");
     const typeSel = document.querySelector<HTMLSelectElement>("#type");
-    const count = document.querySelector<HTMLElement>("#count");
-    if (!grid || !q || !typeSel || !count) return;
+    const count   = document.querySelector<HTMLElement>("#count");
+    if (!grid || !typeSel || !count) return;
 
-    const query = q.value.trim().toLowerCase();
-    const typeFilter = typeSel.value;
+    const typeFilter = typeSel.value;     // keep type filter if you still want it
 
     const list = pokemon
-        .filter(p => {
-            const inType = !typeFilter || p.types.includes(typeFilter);
-            const abilNames = (p.abilities || []).map(a => abilityName(a)).join(" ");
-            const hiddenName = abilityName(p.hiddenAbility);
-            const hay = (p.name + " " + p.types.join(" ") + " " + abilNames + " " + hiddenName).toLowerCase();
-            return inType && (!query || hay.includes(query));
-        })
-        .sort((a, b) => cmp(a, b, sortState.key, sortState.dir));
-
+        .filter(p => !typeFilter || p.types.includes(typeFilter)) // ← no text query here
+        .sort((a, b) => a.name.localeCompare(b.name));            // your default sort
 
     count.textContent = `${list.length} result${list.length === 1 ? "" : "s"}`;
-
     grid.innerHTML = buildTableHTML(list);
 
-
-    // header click & keyboard sort
-    const head = grid.querySelector("thead");
-    head?.addEventListener("click", (e) => {
-        const th = (e.target as HTMLElement).closest<HTMLTableCellElement>("th.sortable[data-sort]");
-        if (!th) return;
-        const key = th.dataset.sort as SortKey;
-        if (sortState.key === key) {
-            sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
-        } else {
-            sortState = { key, dir: (key === "name" || key.startsWith("type") || key.startsWith("ability") || key === "hidden") ? "asc" : "desc" };
-        }
-        renderTable(pokemon);
-    });
-    head?.addEventListener("keydown", (e: KeyboardEvent) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        const th = (e.target as HTMLElement).closest<HTMLTableCellElement>("th.sortable[data-sort]");
-        if (!th) return;
-        e.preventDefault();
-        const key = th.dataset.sort as SortKey;
-        if (sortState.key === key) {
-            sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
-        } else {
-            sortState = { key, dir: (key === "name" || key.startsWith("type") || key.startsWith("ability") || key === "hidden") ? "asc" : "desc" };
-        }
-        renderTable(pokemon);
-    });
-    grid?.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest("a")) return;                 // ability links
-        if (target.closest("thead")) return;             // header sorts
-        const tr = target.closest<HTMLTableRowElement>("tr.rowlink");
-        if (tr?.dataset.id) navigateToMon(tr.dataset.id);
-    });
-
-    wireFallbacks(grid, "img.dex-icon");
-    wireFallbacks(grid, "img.type-icon");
-
-    // set fixed widths based on the FULL dataset (stored on #grid)
-    applyDexTableSizing(grid);
+    // keep your column sizing logic
+    const table = grid.querySelector<HTMLTableElement>(".dex-table");
+    if (table) applyDexTableSizing(grid);
 }
 
+
 /* ---------- detail rendering ---------- */
+function findMonLocations(mon: Mon): { locId: string; etype: string; chancePct: number; minLvl: number; maxLvl: number }[] {
+    const targetInternal = (mon as any).baseInternal || mon.internalName;
+    const out: { locId: string; etype: string; chancePct: number; minLvl: number; maxLvl: number }[] = [];
+
+    for (const [locId, loc] of Object.entries(LOCS)) {
+        for (const [etype, rows] of Object.entries(loc.encounters)) {
+            const { list } = summarizeEncounterType(rows);
+            const hit = list.find(x => x.intName === targetInternal);
+            if (hit) out.push({ locId, etype, chancePct: hit.chancePct, minLvl: hit.minLvl, maxLvl: hit.maxLvl });
+        }
+    }
+
+    out.sort((a,b) =>
+        b.chancePct - a.chancePct ||
+        locationName(a.locId).localeCompare(locationName(b.locId)) ||
+        a.etype.localeCompare(b.etype)
+    );
+    return out;
+}
+
+
+function buildMonLocationsHTML(mon: Mon): string {
+    const rows = findMonLocations(mon);
+    if (!rows.length) return "";
+    const body = rows.map(r => `
+    <tr>
+      <td class="loc"><a class="plain" href="${locHref(r.locId)}" title="${escapeHTML(locationName(r.locId))}">${escapeHTML(locationName(r.locId))}</a></td>
+      <td class="etype">${escapeHTML(r.etype)}</td>
+      <td class="lv">${fmtLv(r.minLvl, r.maxLvl)}</td>
+      <td class="num">${r.chancePct}%</td>
+    </tr>
+  `).join("");
+
+    return `
+    <section class="panel mon-locations" style="margin-top:12px;">
+      <h2 style="margin:10px 12px 6px; font-size:14px; opacity:.8;">Locations</h2>
+      <table class="mon-loc-table">
+        <thead><tr><th>Location</th><th>Method</th><th>Levels</th><th>Chance</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </section>
+  `;
+}
+
+
 
 function buildDetailHTML(p: Mon) {
     const srcs = frontCandidates(p);
@@ -1486,6 +1675,8 @@ function buildDetailHTML(p: Mon) {
 
     const evolutions = buildEvolutionHTML(p);
 
+    const locations = buildMonLocationsHTML(p);
+
     const learnset = buildLevelUpTable(p);
     // Tutor + Machine moves combined
     const tutorAndTM = [
@@ -1498,7 +1689,7 @@ function buildDetailHTML(p: Mon) {
     const eggSection = buildMovesTableNoLv("Egg Moves", eggMovesFromRoot(p));
 
     // Return everything
-    return detailTop + evolutions + learnset + tutorTMSection + eggSection;
+    return detailTop + evolutions + locations + learnset + tutorTMSection + eggSection;
 
 }
 
@@ -1519,8 +1710,9 @@ function renderTypeDetail(typeId: string) {
     // Moves of this type
     const moveIds = Object.keys(movesIndex || {}).filter(id => movesIndex[id]?.type === typeId);
 
-    count.innerHTML = `<button class="header-back" aria-label="Back to list">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", () => navigateToList());
+    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+
 
     grid.innerHTML = `
   <article class="detail type-detail">
@@ -1679,9 +1871,9 @@ function renderDetail(pokemon: Mon[], id: string) {
     }
 
     // Put the Back button where “Details” used to be
-    count.innerHTML = `<button class="back header-back" aria-label="Back to list">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")
-        ?.addEventListener("click", () => navigateToList());
+    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+
 
     // Build the card WITHOUT an internal back button
     grid.innerHTML = buildDetailHTML(mon);
@@ -1759,14 +1951,24 @@ function parseHash(): {type:'list'|'mon'|'ability'|'move'|'type', id?:string} {
     return { type: 'list' };
 }
 
+function parseRoute(): { kind: 'mon'|'ability'|'move'|'type'|'loc'|'list'; id?: string } {
+    const h = location.hash;
+    let m = h.match(/^#\/mon\/(.+)$/);  if (m) return { kind:'mon',  id: decodeURIComponent(m[1]) };
+    m = h.match(/^#\/ability\/(.+)$/);     if (m) return { kind:'ability', id: decodeURIComponent(m[1]) };
+    m = h.match(/^#\/move\/(.+)$/);     if (m) return { kind:'move', id: decodeURIComponent(m[1]) };
+    m = h.match(/^#\/type\/(.+)$/);     if (m) return { kind:'type', id: decodeURIComponent(m[1]) };
+    m = h.match(/^#\/loc\/(.+)$/);      if (m) return { kind:'loc',  id: decodeURIComponent(m[1]) };
+    return { kind:'list' };
+}
+
 function renderMoveDetail(moveId: string) {
     const grid  = document.querySelector<HTMLElement>("#grid");
     const count = document.querySelector<HTMLElement>("#count");
     if (!grid || !count) return;
 
-    count.innerHTML = `<button class="header-back" aria-label="Back to list">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")
-        ?.addEventListener("click", () => navigateToList());
+    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+
 
     grid.innerHTML = buildMoveDetailHTML(moveId);
 
@@ -1788,26 +1990,32 @@ function navigateToMon(id: string) {
     location.hash = `#/mon/${encodeURIComponent(id)}`;
 }
 function navigateToList() {
+    location.hash = '';
     history.pushState("", document.title, window.location.pathname + window.location.search); // clear hash
     renderCurrent();
     scrollToTopNow();
 }
+
+let NAV_STACK: string[] = [];
+let NAV_LOCK = false; // suppress push while we programmatically go back
+
+const currentRoute = () => (location.hash || "");
 
 
 
 function renderCurrent() {
     const grid = document.querySelector<HTMLElement>("#grid");
     if (!grid) return;
-    const data = grid.getAttribute("data-all-pokemon");
-    if (!data) return;
-    const pokemon: Mon[] = JSON.parse(data);
-
-    const route = parseHash();
-    if (route.type === "mon"     && route.id) renderDetail(pokemon, route.id);
-    else if (route.type === "ability" && route.id) renderAbilityDetail(pokemon, route.id);
-    else if (route.type === "move"    && route.id) renderMoveDetail(route.id);
-    else if (route.type === "type"    && route.id) renderTypeDetail(route.id);
-    else renderTable(pokemon);
+    const pokemon = JSON.parse(grid.getAttribute("data-all-pokemon") || "[]") as Mon[];
+    const route = parseRoute();
+    switch (route.kind) {
+        case 'mon':  return renderDetail(pokemon, route.id!);
+        case 'ability': return renderAbilityDetail(pokemon, route.id!);
+        case 'move': return renderMoveDetail(route.id!);
+        case 'type': return renderTypeDetail(route.id!);
+        case 'loc':  return renderLocationDetail(route.id!);  // ← NEW
+        default:     return renderTable(pokemon);
+    }
 }
 /* ---------- evolutions ---------- */
 
@@ -1835,36 +2043,47 @@ let MON_BY_ID: Record<string, Mon> = {};
 // Fallbacks still work if no INTL string is provided.
 function formatEvoMethod(method: string, param?: string): string {
     const mKey = normKey(method);
-    const tem = (INTL as any)?.evoMethods?.[method] || (INTL as any)?.evoMethods?.[mKey];
+    const tem  = (INTL as any)?.evoMethods?.[method] || (INTL as any)?.evoMethods?.[mKey];
 
-    // Build token bag
-    const tokens: Record<string,string> = {
+    const tokens: Record<string, string> = {
         method,
-        param: param || ""
+        param: param ?? ""
     };
 
-    // If param is actually an item id in this method, render its name
-    // Simple heuristic: if the template includes {item}, treat param as item.
-    if (tem && /\{item\}/.test(tem)) {
+    // Item name (if template asks for {item})
+    if (tem && tem.includes("{item}")) {
         tokens.item = itemName(param || "");
-    } else {
-        // Also handle common PBS method names that take an item, even if no template
-        const itemish = /item|stone|hold|trade|use/i.test(method);
-        tokens.item = itemish ? itemName(param || "") : (param || "");
     }
 
-    // If we have a template, replace {…}
+    // Location name (if method is Location OR template asks for {location})
+    if (/^Location$/i.test(method) || (tem && tem.includes("{location}"))) {
+        const name = locationName(param || "");
+        tokens.location = name;
+        // If template uses {param} to mean the location string, keep this behavior:
+        if (tem && tem.includes("{param}")) tokens.param = name;
+    }
+
+    // NEW: {level} → show the numeric parameter as-is (integer string)
+    if (tem && tem.includes("{level}")) {
+        const n = parseInt(param ?? "", 10);
+        tokens.level = Number.isFinite(n) ? String(n) : (param ?? "");
+    }
+
+    // NEW: {move} → display move's proper name
+    if (tem && tem.includes("{move}")) {
+        tokens.move = moveNameFromId(param || "");
+    }
+
+    // Apply template if present
     if (tem) {
         return tem.replace(/\{(\w+)\}/g, (_, k) => tokens[k] ?? "");
     }
 
-    // Fallbacks if you don't have an intl string for this method yet
-    if (/^Trade$/.test(method) && tokens.item) return `Trade holding ${tokens.item}`;
-    if (/^UseItem$/.test(method) && tokens.item) return `Use ${tokens.item}`;
-    if (/Stone$/i.test(method) && tokens.item)   return `Use ${tokens.item}`;
-    if (tokens.item) return `${method} ${tokens.item}`;
-    return method;
+    // Fallbacks (keep your previous behavior)
+    if (/^Location$/i.test(method) && tokens.location) return `Level up at ${tokens.location}`;
+    return tokens.param ? `${method} ${tokens.param}` : method;
 }
+
 
 
 
@@ -1986,6 +2205,68 @@ function buildEvolutionHTML(current: Mon): string {
     </section>`;
 }
 
+function renderLocationDetail(locId: string) {
+    const grid = document.querySelector<HTMLElement>("#grid");
+    const count = document.querySelector<HTMLElement>("#count");
+    if (!grid || !count) return;
+
+    const loc = LOCS[locId];
+    if (!loc) {
+        count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+        grid.innerHTML = `<div style="padding:16px;">Location not found.</div>`;
+        count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+        return;
+    }
+
+    // Header back button (same style as Pokémon)
+    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+
+    // For each encounter type, build a small table
+    const sections = Object.entries(loc.encounters)
+        .sort((a,b)=> a[0].localeCompare(b[0]))
+        .map(([etype, rows]) => buildLocationMonSection(etype, rows))
+        .join("");
+
+    grid.innerHTML = `
+    <article class="detail">
+      <h1 class="detail-name">${escapeHTML(loc.name || `#${loc.id}`)}</h1>
+      ${sections || `<div style="padding:12px;opacity:.7;">No encounters recorded.</div>`}
+    </article>
+  `;
+
+    wireIconFallbacks(grid);
+    scrollToTopNow?.();
+}
+
+function buildLocationMonSection(etype: string, rows: EncounterRow[]): string {
+    const { list } = summarizeEncounterType(rows);
+    const body = list.map(({ intName, chancePct, minLvl, maxLvl }) => {
+        const mon = MON_BY_INTERNAL[intName];
+        const name = mon?.name || intName;
+        const link = mon ? monHref(mon) : "#";
+        return `
+      <tr class="rowlink">
+        <td class="icon">${miniIconHTML(mon || intName)}</td>
+        <td class="name"><a class="plain" href="${link}">${escapeHTML(name)}</a></td>
+        <td class="lv">${fmtLv(minLvl, maxLvl)}</td>
+        <td class="num">${chancePct}%</td>
+      </tr>`;
+    }).join("");
+
+    return `
+    <section class="panel" style="margin-top:12px;">
+      <h2 style="margin:10px 12px 6px; font-size:14px; opacity:.8;">${escapeHTML(etype)}</h2>
+      <table class="location-table">
+        <thead>
+          <tr><th></th><th>Pokémon</th><th>Levels</th><th>Chance</th></tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </section>`;
+}
+
+
 
 /* ---------- start ---------- */
 
@@ -1998,6 +2279,7 @@ async function start() {
         loadTypes?.(),      // if you already have this
         loadMoves(),
         loadItems(),
+        loadEncounters(),
     ]);
 
     const pokemon = await loadPokemon();
@@ -2016,6 +2298,8 @@ async function start() {
 
     buildSearchIndex()
     wireSearchSuggest();
+
+    setupNavStack()
 
     const grid = document.querySelector<HTMLElement>("#grid");
     if (grid) grid.setAttribute("data-all-pokemon", JSON.stringify(pokemon));
@@ -2045,49 +2329,100 @@ async function start() {
     });
 
 
-    window.addEventListener("hashchange", () => {
-        renderCurrent();
-        scrollToTopNow();
-    });
+
     renderCurrent(); // first render now sees ABIL, so names show up everywhere
 }
+
+function navBack(){
+    if (NAV_STACK.length <= 1) {
+        // Nothing to go back to → go to list
+        NAV_LOCK = true;
+        NAV_STACK = [''];
+        location.hash = '';               // triggers hashchange + render
+        queueMicrotask(() => { NAV_LOCK = false; });
+        return;
+    }
+    // Pop current and navigate to previous
+    NAV_LOCK = true;
+    NAV_STACK.pop();                    // drop current
+    const prev = NAV_STACK[NAV_STACK.length - 1] || '';
+    location.hash = prev;               // triggers hashchange + render
+    queueMicrotask(() => { NAV_LOCK = false; });
+}
+
+
+function setupNavStack(){
+    // initialize with current route ('' means list)
+    NAV_STACK = [currentRoute()];
+
+    window.addEventListener("hashchange", () => {
+        const h = currentRoute();
+        if (!NAV_LOCK) {
+            const last = NAV_STACK[NAV_STACK.length - 1];
+            if (h !== last) NAV_STACK.push(h);
+        }
+        renderCurrent();     // re-render for the new route
+        scrollToTopNow();    // always jump to top on route change
+    }, { passive: true });
+}
+
+function resolveAbilityKey(id: string): string {
+    if (ABIL?.[id]) return id;
+    const up = id.toUpperCase?.() || id;
+    const hit = Object.keys(ABIL || {}).find(k => k === id || k.toUpperCase() === up);
+    return hit || id; // fall back, but filters may return empty if not real
+}
+
+function getAbilityInfo(id: string): { name?: string; description?: string } | undefined {
+    const key = resolveAbilityKey(id);
+    return (ABIL as any)?.[key];
+}
+
+
 
 function renderAbilityDetail(pokemon: Mon[], id: string) {
     const grid  = document.querySelector<HTMLElement>("#grid");
     const count = document.querySelector<HTMLElement>("#count");
     if (!grid || !count) return;
 
-    const info  = ABIL[id];
+    const aKey  = resolveAbilityKey(id);
+    const info  = getAbilityInfo(aKey);
     const title = info?.name || id;
 
-    // “Query by ability”: ability slot 1/2 or hidden matches
+    // Header Back button (same control style used elsewhere, wired to navBack)
+    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+
+    // Filter mons that have this ability (regular or hidden)
     const list = pokemon
-        .filter(p => (p.abilities?.includes(id)) || p.hiddenAbility === id)
+        .filter(p => (p.abilities?.includes(aKey)) || p.hiddenAbility === aKey)
         .sort((a, b) => a.name.localeCompare(b.name));
 
-    // Header: same pretty back button as Pokémon detail
-    count.innerHTML = `<button class="header-back" aria-label="Back to list">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")
-        ?.addEventListener("click", () => navigateToList());
-
+    // Page
     grid.innerHTML = `
-  <article class="detail">
-    <h1 class="detail-name">${title}</h1>
+    <article class="detail">
+      <h1 class="detail-name">${escapeHTML(title)}</h1>
 
-    <section class="detail-block">
-      <p>${info?.description || "—"}</p>
-    </section>
+      <section class="detail-block">
+        ${escapeHTML(info?.description || "—")}
+      </section>
 
-    <section class="detail-block">
-      <h2>Pokémon</h2>
-      ${buildTableHTML(list)}
-    </section>
-  </article>`;
+      <section class="detail-block">
+        <h2>Pokémon</h2>
+        ${buildTableHTML(list)}
+      </section>
+    </article>
+  `;
 
-    // Make the table look/size like the main one
+    // Keep table behavior consistent with main page
     wireIconFallbacks(grid);
     applyDexTableSizing(grid);
+
+    // Start at top
+    scrollToTopNow?.();
 }
+
+
 
 
 
