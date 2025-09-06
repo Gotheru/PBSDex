@@ -649,6 +649,15 @@ const slugify = (s: string) =>
     (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 // ---------- more helpers ----------
+
+function scrollToTopNow() {
+    // Window/body scroll:
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    // The main content area (it’s scrollable via overflow:auto):
+    const grid = document.getElementById('grid');
+    if (grid) grid.scrollTop = 0;
+}
+
 // Front sprites live in /images/front/<INTERNAL>.png (96x96)
 function frontCandidates(p: Mon): string[] {
     const base = new URL("./images/front/", document.baseURI).toString();
@@ -1696,7 +1705,9 @@ function navigateToMon(id: string) {
 function navigateToList() {
     history.pushState("", document.title, window.location.pathname + window.location.search); // clear hash
     renderCurrent();
+    scrollToTopNow();
 }
+
 
 
 function renderCurrent() {
@@ -1766,7 +1777,10 @@ async function start() {
     });
 
 
-    window.addEventListener("hashchange", renderCurrent);
+    window.addEventListener("hashchange", () => {
+        renderCurrent();
+        scrollToTopNow();
+    });
     renderCurrent(); // first render now sees ABIL, so names show up everywhere
 }
 
