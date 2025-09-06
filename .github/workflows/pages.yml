@@ -28,6 +28,7 @@ jobs:
       - run: python3 scripts/abilities_to_json.py public/data/abilities.txt public/data/abilities.json
       - run: python3 scripts/types_to_json.py public/data/types.txt public/data/types.json
       - run: python3 scripts/moves_to_json.py public/data/moves.txt public/data/moves.json
+      - run: python3 scripts/items_to_json.py public/data/items.txt public/data/items.json
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

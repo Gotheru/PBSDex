@@ -57,6 +57,50 @@ type TypeInfo = {
 };
 let typeData: Record<string, TypeInfo> = {};
 
+// ---- types.ts bits (in your main.ts near other types) ----
+type Item = {
+    id: string;
+    internalName: string;
+    name: string;
+    description?: string;
+    pocket?: number | string;
+    price?: number | string;
+    sellPrice?: number | string;
+    fieldUse?: string;
+    flags?: string[];
+    namePlural?: string;
+    consumable?: boolean;
+    extra?: Record<string, string>;
+};
+
+// Global registry
+let ITEMS: Record<string, Item> = {};
+const itemName = (internal: string | undefined | null): string => {
+    if (!internal) return "";
+    const it = ITEMS[internal];
+    return it?.name || internal;
+};
+
+// ---- loader (match style of your other loaders) ----
+async function loadItems(): Promise<void> {
+    const url = new URL("./data/items.json", document.baseURI).toString();
+    const res = await fetch(url, { cache: "no-cache" });
+    if (!res.ok) return;
+    const data = await res.json();
+    // supports object keyed by internal; also supports array fallback
+    if (Array.isArray(data)) {
+        const out: Record<string, Item> = {};
+        for (const it of data as Item[]) {
+            const key = (it.internalName || it.id || "").toString();
+            if (key) out[key] = it;
+        }
+        ITEMS = out;
+    } else {
+        ITEMS = data as Record<string, Item>;
+    }
+}
+
+
 // ---- searchbar ---- //
 
 const escapeHTML = (s:string) =>
@@ -72,10 +116,23 @@ function highlight(label:string, q:string){
 // Resolves relative to the current page, so it works in dev ("/") and GH Pages ("/PBSDex/")
 const assetUrl = (rel: string) => new URL(rel.replace(/^\//, ""), document.baseURI).toString();
 
-// Mini sprite (left 64px of a 128×64 sheet)
-function miniIconHTML(internalName: string){
-    const url = assetUrl(`images/icons/${internalName}.png`);
-    return `<img class="suggest-icon" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+// Mini sprite (left 64px of a 128×64 sheet) — suggestions dropdown
+function miniIconHTML(monOrName: Mon | string){
+    const p = _asMon(monOrName);
+    const urls = iconCandidates(p);
+    const all = urls.join("|").replace(/"/g, "&quot;");
+    return `<img class="suggest-icon"
+               src="${urls[0]}"
+               data-srcs="${all}"
+               data-si="0"
+               alt=""
+               loading="lazy"
+               onerror="(function(el){
+                 var a=(el.getAttribute('data-srcs')||'').split('|');
+                 var i=+el.getAttribute('data-si')||0; i++;
+                 if(i<a.length){el.setAttribute('data-si',i); el.src=a[i];}
+                 else{el.style.display='none';}
+               })(this)">`;
 }
 
 
@@ -748,6 +805,14 @@ function iconUrl(internalName: string): string {
     // public/images/icons/<InternalName>.png
     // document.baseURI keeps it working at /PBSDex/ in prod and / in dev
     return new URL(`./images/icons/${encodeURIComponent(internalName)}.png`, document.baseURI).toString();
+}
+
+// Resolve to a Mon if only a string is passed
+function _asMon(m: Mon | string): Mon {
+    if (typeof m !== "string") return m;
+    const byInternal = (window as any).MON_BY_INTERNAL?.[m];
+    const byId = (window as any).MON_BY_ID?.[m];
+    return byInternal || byId || ({ internalName: m, id: String(m), name: m, types: [], stats:{hp:0,atk:0,def:0,spa:0,spd:0,spe:0}, abilities:[] } as unknown as Mon);
 }
 
 function iconCandidates(p: Mon): string[] {
@@ -1757,37 +1822,61 @@ function moveNameFromId(id?: string): string {
 let MON_BY_INTERNAL: Record<string, Mon> = {};
 let MON_BY_ID: Record<string, Mon> = {};
 
-function formatEvoMethod(method?: string, param?: string | number): string {
-    const mKey = normKey(method || "");                // lookup key
-    const rawTpl = INTL_IDX.evoMethods.get(mKey)
-        || INTL_IDX.evoMethods.get("default") // allow "default" or "DEFAULT"
-        || "{method} {param}";
+// If you already have INTL + an evoMethods map, this integrates nicely.
+// Fallbacks still work if no INTL string is provided.
+function formatEvoMethod(method: string, param?: string): string {
+    const mKey = normKey(method);
+    const tem = (INTL as any)?.evoMethods?.[method] || (INTL as any)?.evoMethods?.[mKey];
 
-    // Fill a generic context; templates can pick what they need
-    const paramStr = (param == null ? "" : String(param));
-    const ctx: Record<string, string | number | undefined> = {
-        method: method || "",
-        param: paramStr,
-        level: paramStr,
-        location: paramStr,
-        item: paramStr,
-        move: method === "HasMove" ? moveNameFromId(paramStr) : paramStr
+    // Build token bag
+    const tokens: Record<string,string> = {
+        method,
+        param: param || ""
     };
 
-    const out = tpl(rawTpl, ctx).trim();
-    // Optional: warn if we fell back
-    if (!INTL_IDX.evoMethods.has(mKey)) {
-        // console.warn(`[evo] Unknown method "${method}", using DEFAULT →`, out);
+    // If param is actually an item id in this method, render its name
+    // Simple heuristic: if the template includes {item}, treat param as item.
+    if (tem && /\{item\}/.test(tem)) {
+        tokens.item = itemName(param || "");
+    } else {
+        // Also handle common PBS method names that take an item, even if no template
+        const itemish = /item|stone|hold|trade|use/i.test(method);
+        tokens.item = itemish ? itemName(param || "") : (param || "");
     }
-    return out;
+
+    // If we have a template, replace {…}
+    if (tem) {
+        return tem.replace(/\{(\w+)\}/g, (_, k) => tokens[k] ?? "");
+    }
+
+    // Fallbacks if you don't have an intl string for this method yet
+    if (/^Trade$/.test(method) && tokens.item) return `Trade holding ${tokens.item}`;
+    if (/^UseItem$/.test(method) && tokens.item) return `Use ${tokens.item}`;
+    if (/Stone$/i.test(method) && tokens.item)   return `Use ${tokens.item}`;
+    if (tokens.item) return `${method} ${tokens.item}`;
+    return method;
 }
 
 
-function miniIcon48(internalName: string) {
-    const url = new URL(`./images/icons/${internalName}.png`, document.baseURI).toString();
-    // 128×64 sheets: we show the left half; 48×48 display, pixelated
-    return `<img class="evo-mini" src="${url}" alt="" loading="lazy"
-              style="width:48px;height:48px;object-fit:cover;object-position:left center;image-rendering:pixelated;border-radius:8px;">`;
+
+// 48×48 evo icon (crop left half) — evolution line
+function miniIcon48(monOrName: Mon | string) {
+    const p = _asMon(monOrName);
+    const urls = iconCandidates(p);
+    const all = urls.join("|").replace(/"/g, "&quot;");
+    return `<img class="evo-mini"
+               src="${urls[0]}"
+               data-srcs="${all}"
+               data-si="0"
+               alt=""
+               loading="lazy"
+               style="width:48px;height:48px;object-fit:cover;object-position:left center;image-rendering:pixelated;border-radius:8px;"
+               onerror="(function(el){
+                 var a=(el.getAttribute('data-srcs')||'').split('|');
+                 var i=+el.getAttribute('data-si')||0; i++;
+                 if(i<a.length){el.setAttribute('data-si',i); el.src=a[i];}
+                 else{el.style.display='none';}
+               })(this)">`;
 }
 
 // Return [baseInternal, stages, edgeLabelMap]
@@ -1898,7 +1987,8 @@ async function start() {
         loadIntl(),
         loadAbilities?.(),  // if you already have this
         loadTypes?.(),      // if you already have this
-        loadMoves(),        // NEW
+        loadMoves(),
+        loadItems(),
     ]);
 
     const pokemon = await loadPokemon();
