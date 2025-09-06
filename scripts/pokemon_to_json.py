@@ -122,11 +122,40 @@ def parse_wild_items(d: Dict[str,str]) -> Dict[str,str]:
         if k in d and str(d[k]).strip():
             out[k] = str(d[k]).strip()
     return out
+def get_ci(d: Dict[str, str], key: str) -> Optional[str]:
+    """Case-insensitive getter for raw PBS dicts."""
+    kl = key.lower()
+    for k, v in d.items():
+        if k.lower() == kl:
+            return v
+    return None
+
+def extract_types(raw: Dict[str, str]) -> List[str]:
+    """
+    Prefer explicit Type1/Type2 if present; otherwise parse Types/Type CSV.
+    Returns a deduped list of 1–2 types.
+    """
+    t1 = get_ci(raw, "Type1")
+    t2 = get_ci(raw, "Type2")
+    if t1 or t2:
+        out = []
+        if t1: out.append(t1.strip())
+        if t2 and t2.strip() and (not out or t2.strip() != out[0]): out.append(t2.strip())
+        return [t for t in out if t]
+    # Fallback: "Types=A,B" or "Type=A,B"
+    csv = get_ci(raw, "Types") or get_ci(raw, "Type")
+    ts = to_list(csv)
+    if ts:
+        a = [ts[0]]
+        if len(ts) > 1 and ts[1] and ts[1] != ts[0]:
+            a.append(ts[1])
+        return a
+    return []
+
 
 # ---------- file parsers ----------
 
 def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, Any]]:
-    """Parse pokemon.txt (bases). Key by InternalName."""
     entries: List[Dict[str, Any]] = []
     cur: Optional[Dict[str, Any]] = None
     cur_raw: Optional[Dict[str, Any]] = None
@@ -139,16 +168,10 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
 
             if line.startswith("["):
                 if cur:
-                    # finalize previous
-                    tb = cur_raw or {}
-                    types=[]
-                    t1 = tb.get("Type1"); t2 = tb.get("Type2")
-                    if t1: types.append(t1)
-                    if t2 and (not types or t2 != types[0]): types.append(t2)
-                    cur["types"] = [t for t in types if t]
+                    # ── finalize previous section ─────────────────────────────
+                    cur["types"] = extract_types(cur_raw or {})
                     cur["raw"] = cur_raw
                     entries.append(cur)
-
                 header, idx = parse_section_header(line)
                 cur = {"_header": header, "_index": idx}
                 cur_raw = {}
@@ -161,14 +184,13 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
             cur_raw[k] = v
 
     if cur:
-        tb = cur_raw or {}
-        types=[]
-        t1 = tb.get("Type1"); t2 = tb.get("Type2")
-        if t1: types.append(t1)
-        if t2 and (not types or t2 != types[0]): types.append(t2)
-        cur["types"] = [t for t in types if t]
+        # ── finalize last section ────────────────────────────────────────────
+        cur["types"] = extract_types(cur_raw or {})
         cur["raw"] = cur_raw
         entries.append(cur)
+
+    # … the rest of parse_pokemon_pbs stays the same …
+
 
     result: Dict[str, Dict[str, Any]] = {}
     for e in entries:
