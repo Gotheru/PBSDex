@@ -837,6 +837,39 @@
         .mon-loc-table th:nth-child(4), .mon-loc-table td:nth-child(4){ width: var(--col-chance); text-align: center; }
 
         .suggest-pin{ display:inline-block; width:22px; text-align:center; }
+        /* Clickable area for icon + name only */
+        .dex-table a.mon-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        transition: background 120ms ease, transform 60ms ease;
+        }
+        .dex-table a.mon-link:hover {
+        background: color-mix(in oklab, currentColor 10%, transparent);
+        }
+        .dex-table a.mon-link:active {
+        transform: translateY(1px);
+        }
+        .dex-table a.mon-link:focus {
+        outline: 2px solid #93c5fd;
+        outline-offset: 2px;
+        }
+
+        /* keep icon size */
+        .dex-table .dex-icon {
+        width: 32px; height: 32px;
+        object-fit: cover; object-position: left center;
+        image-rendering: pixelated; display: block;
+        }
+
+        /* optional: name cell stays tight */
+        .dex-table td.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 
     </style>
 </head>

@@ -4,6 +4,7 @@ import { Mon } from "../core/types";
 import { bst, buildDetailHTML } from "../pages/mon";
 import { abilityLinkHTML, iconCandidates, typingIconsLinkedHTML } from "../util/assets";
 import { wireFallbacks } from "../util/dom";
+import { escapeHTML } from "./suggest";
 
 export function applyDexTableSizing(container: HTMLElement) {
     const table = container.querySelector<HTMLTableElement>(".dex-table");
@@ -141,11 +142,27 @@ export function buildTableHTML(list: Mon[]) {
              data-srcs="${srcs.join('|')}"
              data-idx="0"
              alt="" loading="lazy" decoding="async">
-      `;
+        `;
+        const monHref = `#/mon/${encodeURIComponent(p.id)}`;
+        const iconSrcs = iconCandidates(p); // you already have this util
         return `
       <tr class="rowlink" tabindex="0" data-id="${p.id}">
-        <td class="icon">${icon}</td>
-        <td title="${p.name}">${p.name}</td>
+        <td class="icon">
+          <a class="mon-link icon" href="${monHref}" aria-label="${escapeHTML(p.name)}" title="${escapeHTML(p.name)}">
+            <img class="dex-icon"
+                src="${iconSrcs[0]}"
+                data-srcs="${iconSrcs.join('|')}"
+                data-idx="0"
+                alt=""
+                loading="lazy">
+          </a>
+        </td>
+
+        <td class="name">
+          <a class="mon-link name" href="${monHref}" title="${escapeHTML(p.name)}">
+            <span class="mon-name">${escapeHTML(p.name)}</span>
+          </a>
+        </td>
         <td class="typing" title="${(p.types||[]).join(' | ')}">${typingIconsLinkedHTML(p.types)}</td>
         <td title="${abilityName(p.abilities[0])}">${ability1}</td>
         <td title="${abilityName(p.abilities[1])}">${ability2}</td>

@@ -28,25 +28,10 @@ export async function start() {
     // q?.addEventListener("input", rerender);
     typeSel?.addEventListener("change", rerender);
 
-    grid?.addEventListener("click", (e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest("a")) return; // let ability links navigate
-        const tr = target.closest<HTMLTableRowElement>("tr.rowlink");
-        if (tr?.dataset.id) navigateToMon(tr.dataset.id);
+    grid?.addEventListener('click', (e) => {
+        if (!(e.target as HTMLElement).closest('.mon-link')) return; // only our links
+        // anchor href + router will handle navigation; nothing else to do
     });
-    grid?.addEventListener("keydown", (e: KeyboardEvent) => {
-        const target = e.target as HTMLElement;
-        if (target.closest("a")) return; // don't hijack Enter on a link
-        if (e.key === "Enter" || e.key === " ") {
-            const tr = target.closest<HTMLTableRowElement>("tr.rowlink");
-            if (tr?.dataset.id) {
-                e.preventDefault();
-                navigateToMon(tr.dataset.id);
-            }
-        }
-    });
-
-
 
     renderCurrent(); // first render now sees ABIL, so names show up everywhere
 }
