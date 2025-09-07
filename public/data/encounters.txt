@@ -125,7 +125,7 @@ Land,10
 Land,10
     20,BOLDORE,38,40
     20,DURANT,38,40
-    20,PINSIR,38,40
+    20,GYROPASS,38,40
     20,WOOBAT,38,40
     20,WORMADAM,38,40
 #-------------------------------
@@ -153,7 +153,7 @@ Land,10
     20,PIDGEY,6,8
     20,ODDISH,6,8
 #-------------------------------
-[049] # Sutaru woods
+[049] # Sutaru Woods
 Land,10
     20,SWABLUT,4,6
     20,PIDGEY,4,6
@@ -267,7 +267,7 @@ Land,10
     20,SENTRET,9,12
     20,KRICKETOT,9,12
 #-------------------------------
-[068] # Souten woods
+[068] # Souten Woods
 Land,10
     20,PHANTUMP,10,13
     20,METAPOD,10,13
@@ -495,7 +495,7 @@ Land,10
     20,WEEPINBELL,34,36
     20,TYNAMO,34,36
 #-------------------------------
-[133] # Rivera woods
+[133] # Rivera Woods
 Land,10
     20,KOFFING,34,36
     20,ILLUMISE,34,36
@@ -562,7 +562,7 @@ Cave,4
 [170] # Aureyes Woods
 Land,10
     20,SHUPPET,30,32
-    20,PHANTUMP,30,32
+    20,NOIBAT,30,32
     20,KOFFING,30,32
     20,MISDREAVUS,30,32
     20,GREAVARD,30,32

@@ -7067,7 +7067,7 @@ NamePlural = Gene Charms
 Pocket = 8
 Price = 0
 Flags = KeyItem
-Description = A charm said to increase the change of finding Wild Pokémon with better genes.
+Description = A charm said to increase the chance of finding Wild Pokémon with better genes.
 #-------------------------------
 [HERITAGECHARM]
 Name = Heritage Charm
@@ -7173,4 +7173,13 @@ Price = 2000
 FieldUse = OnPokemon
 Flags = EvolutionStone
 Description = This disk fills you with a feeling of uncertainty, it's likely not from this world. A certain Pokemon might react strongly to it..
+#-------------------------------
+[EXPJAR]
+Name = Exp Jar
+NamePlural = Exp Jars
+Pocket = 8
+Price = 0
+FieldUse = Direct
+Flags = KeyItem
+Description = test2.
 #-------------------------------

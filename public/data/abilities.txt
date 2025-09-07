@@ -1329,7 +1329,7 @@ Description = Negates and powers up its own Sound-Type moves if hit by one.
 #-------------------------------
 [ANCIENTKNOWLEDGE]
 Name = Ancient Knowledge
-Description = Raises the Pokémon's Sp.Attack stat.
+Description = Raises the PokÃ©mon's Sp.Attack stat.
 #-------------------------------
 [FLAMETOUCH]
 Name = Flame Touch
