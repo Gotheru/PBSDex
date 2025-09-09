@@ -3,6 +3,7 @@ import { navBack } from "../core/router";
 import { Mon } from "../core/types";
 import { bst, buildDetailHTML } from "../pages/mon";
 import { abilityLinkHTML, categoryIconTag, iconCandidates, locHref, miniIconHTML, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML } from "../util/assets";
+import { renderCoverage } from "../pages/coverage";
 import { wireFallbacks } from "../util/dom";
 import { escapeHTML } from "./suggest";
 
@@ -418,8 +419,17 @@ export function renderLocationsIndex() {
 }
 
 export function renderListByKind(pokemon: Mon[], kind: 'mon'|'move'|'ability'|'loc') {
+  // Ensure the Coverage option exists in the selector
+  const sel = document.querySelector<HTMLSelectElement>('#data-kind');
+  if (sel && !sel.querySelector('option[value="coverage"]')) {
+    const o = document.createElement('option');
+    o.value = 'coverage';
+    o.textContent = 'Type Coverage Calculator';
+    sel.appendChild(o);
+  }
   if (kind === 'move') return renderMovesIndex();
   if (kind === 'ability') return renderAbilitiesIndex();
   if (kind === 'loc') return renderLocationsIndex();
+  if ((kind as any) === 'coverage') return renderCoverage();
   return renderTable(pokemon);
 }

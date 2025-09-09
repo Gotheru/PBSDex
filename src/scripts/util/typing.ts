@@ -54,6 +54,19 @@ function mult(atk: string, def: string): number {
     return 1;
 }
 
+// Overall multiplier for an attacking type against a mon's type array
+export function attackMultiplier(atk: string, defs: string[]): number {
+    if (!Array.isArray(defs) || defs.length === 0) return 1;
+    let m = 1;
+    for (const d of defs) {
+        if (!typeData[d]) continue;
+        const mm = mult(atk, d);
+        m *= mm;
+        if (m === 0) return 0; // short-circuit
+    }
+    return m;
+}
+
 // For DEFENDING as a single type: what hits this type for 0, 0.5, 2
 export function defendingBuckets(defType: string) {
     const immune: string[] = [];
