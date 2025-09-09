@@ -1,4 +1,4 @@
-import { _asMon, ABIL, abilityName, moveDisplayName, movesIndex, typeData } from "../core/data";
+import { _asMon, ABIL, abilityName, moveDisplayName, movesIndex, typeData, getGameId } from "../core/data";
 import { Mon } from "../core/types";
 import { typeCandidates } from "./typing";
 
@@ -123,7 +123,7 @@ export const locHref = (id: string) => `#/loc/${encodeURIComponent(id)}`;
 export const monHref = (m: Mon) => `#/mon/${encodeURIComponent(m.id)}`;
 
 export function frontCandidates(p: Mon): string[] {
-    const base = new URL("./images/front/", document.baseURI).toString();
+    const base = new URL(`./images/${getGameId()}/front/`, document.baseURI).toString();
     const names = [
         p.internalName,                  // e.g. BEEDRILLT
         p.internalName.toLowerCase(),    // beedrillt
@@ -143,11 +143,11 @@ export function frontCandidates(p: Mon): string[] {
 export function iconUrl(internalName: string): string {
     // public/images/icons/<InternalName>.png
     // document.baseURI keeps it working at /PBSDex/ in prod and / in dev
-    return new URL(`./images/icons/${encodeURIComponent(internalName)}.png`, document.baseURI).toString();
+    return new URL(`./images/${getGameId()}/icons/${encodeURIComponent(internalName)}.png`, document.baseURI).toString();
 }
 
 export function iconCandidates(p: Mon): string[] {
-    const base = new URL("./images/icons/", document.baseURI).toString();
+    const base = new URL(`./images/${getGameId()}/icons/`, document.baseURI).toString();
     const names = [
         p.internalName,                  // e.g. BEEDRILLT
         p.internalName.toLowerCase(),    // beedrillt

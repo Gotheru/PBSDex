@@ -1,5 +1,5 @@
 import { initTheme } from './ui/theme';
-import { ALL_POKEMON, loadAll } from './core/data';
+import { ALL_POKEMON, loadAll, setGameId } from './core/data';
 import { setupNavStack, renderCurrent, navigateToMon } from './core/router';
 import { bindAbilityTooltips, bindTypeTooltips } from './ui/tooltip';
 import { buildSearchIndex, wireSearchSuggest } from './ui/suggest';
@@ -7,6 +7,10 @@ import { renderTable } from './ui/table';
 
 export async function start() {
     initTheme();
+
+    const params = new URLSearchParams(location.search);
+    const game = params.get('game') || 'main';
+    setGameId(game);
 
     await loadAll()
 
