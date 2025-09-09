@@ -1,0 +1,746 @@
+﻿# See the documentation on the wiki to learn how to edit this file.
+#-------------------------------
+[003] # Forested Cavern
+Land,10
+    20,SPINARAK,6,8
+    20,WEEDLET,6,8
+    20,SHUPPET,6,8
+    20,ZUBAT,6,8
+    20,CHEWTLE,6,8
+#-------------------------------
+[004] # Riverside Cross
+Land,10
+    20,WEEDLET,5,7
+    20,PIDGEY,5,7
+    20,BIDOOF,5,7
+    20,ODDISH,5,7
+    20,FLITTLE,5,7
+#-------------------------------
+[006] # Qyilex
+Land,10
+    20,HOOTHOOTT,14,17
+    20,ZIGZAGOON,14,17
+    20,CUBONE,14,17
+    20,SEEDOT,14,17
+    20,SURSKIT,14,17
+#-------------------------------
+[010] # Village Outskirts
+Land,10
+    20,CUBONE,14,17
+    20,BUNEARY,14,17
+    20,RELLOR,14,17
+    20,SMOLIV,14,17
+    20,CARNIVINE,14,17
+#-------------------------------
+[197] # Aureyes Temple
+Land,10
+    20,GOLETT,14,17
+    20,VOLTORB,14,17
+    20,BALTOY,14,17
+    20,TAROUNTULA,14,17
+    20,CARNIVINE,14,17
+#-------------------------------
+[201] # Tourist District
+Land,10
+    20,MINCCINO,15,18
+    20,RATTATA,15,18
+    20,PURRLOIN,15,18
+    20,LILLIPUP,15,18
+    20,NIDORINO,15,18
+#-------------------------------
+[199] # Eastern Residential District
+Land,10
+    20,MINCCINO,15,18
+    20,ZIGZAGOON,15,18
+    20,PIDOVE,15,18
+    20,PATRAT,15,18
+    20,NIDORINA,15,18
+#-------------------------------
+[011] # Route Six
+Land,10
+    20,PIDGEY,16,19
+    20,VULPIX,16,19
+    20,YANMA,16,19
+    20,BLITZLE,16,19
+    20,ELECTRIKE,16,19
+#-------------------------------
+[012] # Arlen
+Land,10
+    20,GREAVARD,15,18
+    20,PURRLOIN,15,18
+    15,ELECTRIKE,15,18
+    15,GROWLITHET,15,18
+    15,PANCHAM,15,18
+    15,WATTREL,15,18
+#-------------------------------
+[021] # Arlen Sewers
+Cave,10
+    20,GASTLY,17,20
+    20,VANILLITE,17,20
+    20,GRIMER,17,20
+    20,VAROOM,17,20
+    20,EKANS,17,20
+#-------------------------------
+[025] # Avaros Cavern
+Cave,10
+    20,SANDILE,28,31
+    20,PHANPY,28,31
+    20,FRIGIBAX,28,31
+    20,BOLDORE,28,31
+    20,CRABRAWLER,28,31
+#-------------------------------
+[026] # Avaros Mountain
+Land,10
+    20,DODUO,28,31
+    20,DIGLETT,28,31
+    20,ROCKRUFF,28,31
+    20,CETODDLE,28,31
+    20,SWINUB,28,31
+#-------------------------------
+[027] # Route Five
+Land,10
+    20,LUVDISC,19,22
+    20,SHROOMISHT,19,22
+    20,CROAGUNK,19,22
+    20,POLIWAG,19,22
+    20,LOMBRE,19,22
+#-------------------------------
+[030] # Cionsta Park
+Land,10
+    20,MINCCINO,15,18
+    20,ZIGZAGOON,15,18
+    20,PIDGEY,15,18
+    20,PATRAT,15,18
+    20,NIDORINA,15,18
+#-------------------------------
+[036] # Mt Archon 
+Land,10
+    20,DODUO,21,24
+    20,FEAROW,21,24
+    20,ZANGOOSE,21,24
+    20,PANCHAM,21,24
+    20,BOLDORE,21,24 
+#-------------------------------
+[038] # Eastcliff Cavern 
+Land,10
+    20,BOLDORE,38,40
+    20,DURANT,38,40
+    20,GYROPASS,38,40
+    20,WOOBAT,38,40
+    20,WORMADAM,38,40
+#-------------------------------
+[043] # Archon Trail
+Land,10
+    20,SNOM,21,24
+    20,FEAROW,21,24
+    20,SEVIPER,21,24
+    20,PANCHAM,21,24
+    20,HERDIER,21,24 
+#-------------------------------
+[188] # Mt. Archon 
+Land,10
+    20,DODUO,21,24
+    20,FEAROW,21,24
+    20,ZANGOOSE,21,24
+    20,SWINUB,21,24
+    20,BOLDORE,21,24 
+#-------------------------------
+[044] # Courtyard
+Land,10
+    20,SPINARAK,6,8
+    20,NIDORANfE,6,8
+    20,WEEDLET,6,8
+    20,PIDGEY,6,8
+    20,ODDISH,6,8
+#-------------------------------
+[049] # Sutaru Woods
+Land,10
+    20,SWABLUT,4,6
+    20,PIDGEY,4,6
+    20,NOSEPASS,4,6
+    20,SMOLIV,4,6
+    20,WATTREL,4,6
+#-------------------------------
+[053] # Cionsta Cave
+Cave,10
+    20,PATRAT,15,18
+    20,PURRLOIN,15,18
+    15,ELECTRIKE,15,18
+    15,GROWLITHET,15,18
+    15,KLEFKI,15,18
+    15,PANCHAM,15,18
+#-------------------------------
+[055] # Cionsta Cave
+Land,10
+    20,PATRAT,15,18
+    20,PURRLOIN,15,18
+    15,ELECTRIKE,15,18
+    15,GROWLITHET,15,18
+    15,KLEFKI,15,18
+    15,PANCHAM,15,18
+#-------------------------------
+[056] # Route One
+Land,10
+    20,CATERPIE,2,4
+    20,TEDDIURSA,2,4
+    20,FLETCHLING,2,4
+    20,BIDOOF,2,4
+    20,CUTIEFLY,2,4
+#-------------------------------
+[189] # Archon Station
+Land,10
+    20,APPLIN,2,4
+    20,TEDDIURSA,2,4
+    20,FLETCHLING,2,4
+    20,BIDOOF,2,4
+    20,CUTIEFLY,2,4
+#-------------------------------
+[190] # Kuria Station
+Land,10
+    20,WEEDLET,4,6
+    20,WATTREL,4,6
+    20,BIDOOF,4,6
+    20,APPLIN,4,6
+    20,STUNKY,4,6
+#-------------------------------
+[058] # Vanguard Academy
+Land,10
+    20,SWABLUT,6,8
+    20,PIDOVE,6,8
+    20,SPINARAK,6,8
+    20,WEEDLET,6,8
+    20,PIDGEY,6,8
+#-------------------------------
+[059] # Route Two
+Land,10
+    20,SWABLUT,6,8
+    20,PIDOVE,6,8
+    20,BIDOOF,6,8
+    20,SMOLIV,6,8
+    20,WATTREL,6,8
+#-------------------------------
+[062] # Souten Farm
+Land,10
+    20,MAREEPT,6,9
+    20,HOOTHOOTT,6,9
+    20,LECHONK,6,9
+    20,RATTATA,6,9
+    20,ODDISH,6,9
+#-------------------------------
+[063] # Route Three
+Land,10
+    20,SHINXT,6,8
+    20,PIDOVE,6,8
+    20,PONYTA,6,8
+    20,SMOLIV,6,8
+    20,LOTAD,6,8
+#-------------------------------
+[065] # Blackstone Cavern
+Cave,10
+    20,GEODUDET,7,10
+    20,VANILLITE,7,10
+    20,ZUBAT,7,10
+    20,MACHOP,7,10
+    20,WHISMUR,7,10
+#-------------------------------
+[066] # Route Four
+Land,10
+    20,SHINXT,8,11
+    20,METAPOD,8,11
+    20,ODDISH,8,11
+    20,SEEDOT,8,11
+    20,AZURILL,8,11
+#-------------------------------
+[193] # Route Four A
+Land,10
+    20,SHINXT,6,9
+    20,METAPOD,6,9
+    20,ODDISH,6,9
+    20,SEEDOT,6,9
+    20,PIDGEY,6,9
+#-------------------------------
+[067] # Souten
+Land,10
+    20,ZIGZAGOON,9,12
+    20,HOOTHOOTT,9,12
+    20,SKWOVET,9,12
+    20,SENTRET,9,12
+    20,KRICKETOT,9,12
+#-------------------------------
+[068] # Souten Woods
+Land,10
+    20,PHANTUMP,10,13
+    20,METAPOD,10,13
+    20,KAKUNAT,10,13
+    20,PARAS,10,13
+    20,LEDYBA,10,13
+#-------------------------------
+[013] # Beachside Cave
+Cave,10
+    25,SANDSHREWA,4,6
+    25,CORPHISH,4,6
+    25,BIDOOF,4,6
+    25,CRABRAWLER,4,6
+#-------------------------------
+[070] # Archon Beach
+Land,10
+    20,CORPHISH,4,6
+    20,APPLIN,4,6
+    20,BIDOOF,4,6
+    20,TEDDIURSA,4,6
+    20,SPEAROW,4,6
+#-------------------------------
+[072] # Courtyard
+Land,10
+    20,SWABLUT,6,8
+    20,PIDGEY,6,8
+    20,APPLIN,6,8
+    20,PARAS,6,8
+    20,NIDORANmA,6,8
+#-------------------------------
+[073] # Souten Beachside
+Land,10
+    20,MANTYKE,17,20
+    20,DWEBBLE,17,20
+    20,CORSOLA,17,20
+    20,CORPHISH,17,20
+    20,HORSEA,17,20
+#-------------------------------
+[075] # Kuria Lake
+Land,10
+    16,POLIWAG,12,15
+    16,PIDGEY,12,15
+    16,STANTLER,12,15
+    16,FLETCHLING,12,15
+    16,RATTATA,12,15
+    16,METAPOD,12,15
+#-------------------------------
+[200] # Oceia 
+Land,10
+    20,CATERPIE,2,4
+    20,TEDDIURSA,2,4
+    20,FLETCHLING,2,4
+    20,STUNKY,2,4
+    20,APPLIN,2,4
+#-------------------------------
+[077] # Mt. Runaan Central
+Cave,10
+    20,KLAWF,32,34
+    20,LUNATONE,32,34
+    20,CUFANT,32,34
+    20,BOLDORE,32,34
+    20,ROCKRUFF,32,34
+#-------------------------------
+[082] # Avaros
+Land,10
+    20,SNOM,24,27
+    20,SANDILE,24,27
+    20,SEEL,24,27
+    20,CORSOLA,24,27
+    20,SPHEAL,24,27
+#-------------------------------
+[184] # Frostborne Clearing
+Land,10
+    20,PHANPY,24,27
+    20,SNOM,24,27
+    20,SNOVER,24,27
+    20,CETODDLE,24,27
+    20,CUBCHOO,24,27
+#-------------------------------
+[185] # Frostborne Forest
+Land,10
+    20,DODUO,24,27
+    20,SNOM,24,27
+    20,SNOVER,24,27
+    20,SNOM,24,27
+    20,CUBCHOO,24,27
+#-------------------------------
+[186] # Frostborne Forest
+Land,10
+    20,DODUO,24,27
+    20,SNOM,24,27
+    20,SNOVER,24,27
+    20,SNOM,24,27
+    20,CUBCHOO,24,27
+#-------------------------------
+[084] # Sidestone Cavern
+Cave,10
+    20,GRAVELERT,24,27
+    20,SANDILE,24,27
+    20,BOLDORE,24,27
+    20,SWOOBAT,24,27
+    20,CUBCHOO,24,27
+#-------------------------------
+[085] # Route Seven
+Land,10
+    20,SNOM,25,28
+    20,CUBCHOO,25,28
+    20,SANDILE,25,28
+    20,BUNEARY,25,28
+    20,SWINUB,25,28
+#-------------------------------
+[094] # Runaans Port
+Land,10
+    20,DRIFLOON,29,32
+    20,MINCCINO,29,32
+    20,AUDINO,29,32
+    20,WATCHOG,29,32
+    20,CHINGLING,29,32
+#-------------------------------
+[095] # Route Eight
+Land,10
+    20,STANTLER,30,32
+    20,STEENEE,30,32
+    20,SEWADDLE,30,32
+    20,STANTLER,30,32
+    20,BOLTUND,30,32
+#-------------------------------
+[096] # Mt. Runaan West
+Cave,10
+    20,LUNATONE,31,33
+    20,GRAVELERT,31,33
+    20,NACLI,31,33
+    20,HEATMOR,31,33
+    20,HOUNDOUR,31,33
+#-------------------------------
+[099] # Eastbound Forest
+Land,10
+    20,STANTLER,29,32
+    20,BUDEW,29,32
+    20,ELDEGOSS,29,32
+    20,TAUROS,29,32
+    20,DEDENNE,29,32
+#-------------------------------
+[104] # Ameliera District
+Land,10
+    20,BUDEW,31,33
+    20,DRIFLOON,31,33
+    20,YANMA,31,33
+    20,AUDINO,31,33
+    20,ELDEGOSS,31,33
+#-------------------------------
+[109] # Mt. Runaan (Outside)
+Land,10
+    20,HELIOPTILE,32,34
+    20,STANTLER,32,34
+    20,RHYHORN,32,34
+    20,RIBOMBEE,32,34
+    20,ZEBSTRIKA,32,34
+#-------------------------------
+[110] # Route Nine
+Land,10
+    20,CORPHISH,32,34
+    20,PIDGEOTTO,32,34
+    20,SPINDA,32,34
+    20,SURSKIT,32,34
+    20,TRUMBEAK,32,34
+#-------------------------------
+[140] # Mt. Runaan East (outside)
+Land,10
+    20,HELIOPTILE,33,35
+    20,STANTLER,33,35
+    20,RHYHORN,33,35
+    20,URSARING,33,35
+    20,ZEBSTRIKA,33,35
+#-------------------------------
+[118] # Rivera Hillside
+Land,10
+    20,MINCCINO,33,35
+    20,STANTLER,33,35
+    20,RHYHORN,33,35
+    20,URSARING,33,35
+    20,ZEBSTRIKA,33,35
+#-------------------------------
+[111] # Koriko
+Land,10
+    20,CHINGLING,32,34
+    20,GOTHITA,32,34
+    20,MABOSSTIFF,32,34
+    20,MINCCINO,32,34
+    20,WINGULL,32,34
+#-------------------------------
+[117] # Eastcliff Path
+Land,10
+    20,BUNNELBY,38,40
+    20,STANTLER,38,40
+    20,MIENFOO,38,40
+    20,HEATMOR,38,40
+    20,MAGNEMITET,38,40
+#-------------------------------
+[122] # Eastcliff Gate
+Cave,4
+    100,BOLDORE,38,40
+#-------------------------------
+[128] # Route Ten
+Land,10
+    20,SPRITZEE,33,35
+    20,HOPPIP,33,35
+    20,JIGGLYPUFF,33,35
+    20,HYPNO,33,35
+    20,NOCTOWLT,33,35
+#-------------------------------
+[129] # Route Eleven
+Land,10
+    20,SPRITZEE,33,35
+    20,HOPPIP,33,35
+    20,SURSKIT,33,35
+    20,IMPIDIMP,33,35
+    20,TRANQUILL,33,35
+#-------------------------------
+[130] # Rivera
+Land,10
+    20,MIMEJR,34,36
+    20,DRIFLOON,34,36
+    20,VOLBEAT,34,36
+    20,WEEPINBELL,34,36
+    20,TYNAMO,34,36
+#-------------------------------
+[133] # Rivera Woods
+Land,10
+    20,KOFFING,34,36
+    20,ILLUMISE,34,36
+    20,LINOONE,34,36
+    20,NINJASK,34,36
+    20,NUZLEAF,34,36
+#-------------------------------
+[136] # Lakeside Island
+Land,10
+    20,MAROWAK,35,37
+    20,MINCCINO,35,37
+    20,NOCTOWLT,35,37
+    20,TEDDIURSA,35,37
+    20,WORMADAM,35,37
+#-------------------------------
+[138] # Illusi Forest
+Land,10
+    20,FLOETTE,35,37
+    20,ILLUMISE,35,37
+    20,MINCCINO,35,37
+    20,TEDDIURSA,35,37
+    20,VOLBEAT,35,37
+#-------------------------------
+[149] # Route Thirteen
+Land,10
+    20,ARON,39,41
+    20,MUDSDALE,39,41
+    20,FLAAFFYT,39,41
+    20,CAPSAKID,39,41
+    20,CARKOL,39,41
+#-------------------------------
+[150] # Route Twelve
+Land,10
+    20,BARBOACH,36,38
+    20,DWEBBLE,36,38
+    20,FRILLISH,36,38
+    20,RELICANTH,36,38
+    20,SEEL,36,38
+#-------------------------------
+[152] # Citrine
+Land,10
+    20,AIPOM,37,39
+    20,SLAKOTH,37,39
+    20,TROPIUS,37,39
+    20,FLOETTE,37,39
+    20,YANMA,37,39
+#-------------------------------
+[153] # Citrine Jungle
+Land,10
+    20,CARNIVINE,37,39
+    20,EXEGGCUTE,37,39
+    20,SIMISAGE,37,39
+    20,SLAKOTH,37,39
+    20,TROPIUS,37,39
+#-------------------------------
+[154] # Ignitia
+Cave,4
+    20,ARON,40,42
+    20,MAGMAR,40,42
+    20,SLUGMA,40,42
+    20,TORKOAL,40,42
+    20,VANILLISH,40,42
+#-------------------------------
+[170] # Aureyes Woods
+Land,10
+    20,SHUPPET,30,32
+    20,NOIBAT,30,32
+    20,KOFFING,30,32
+    20,MISDREAVUS,30,32
+    20,GREAVARD,30,32
+#-------------------------------
+[181] # East Rivera Plains
+Land,10
+    20,DUBWOOL,41,43
+    20,AMPHAROST,41,43
+    20,STOUTLAND,41,43
+    20,LIEPARD,41,43
+    20,GRUMPIG,41,43
+#-------------------------------
+[172] # Kirba Desert
+Land,10
+    20,VENONAT,41,43
+    20,CACNEA,41,43
+    20,SILICOBRA,41,43
+    20,CACNEA,41,43
+    20,DREDNAW,41,43
+#-------------------------------
+[174] # Northern Kirba
+Land,10
+    20,CACNEA,41,43
+    20,ZORUA,41,43
+    20,FALINKS,41,43
+    20,HIPPOPOTAS,41,43
+    20,BRAMBLIN,41,43
+#-------------------------------
+[177] # Kirba Ruins
+Cave,10
+    20,CACNEA,41,43
+    20,GRAVELERT,41,43
+    20,YAMASK,41,43
+    20,SKORUPI,41,43
+    20,SOLROCK,41,43
+#-------------------------------
+[231] # Auburn Woodlands
+Land,10
+    19,NUMEL,40,42
+    19,TAILLOW,40,42
+    19,CASCOON,40,42
+    19,MORELULL,40,42
+    19,SHROODLE,40,42
+    1,CAMERUPT,40,42
+    1,SWELLOW,40,42
+    1,DUSTOX,40,42
+    1,SHIINOTIC,40,42
+    1,GRAFAIAI,40,42
+#-------------------------------
+[300] # Auburn Woodlands
+Land,10
+    19,NUMEL,40,42
+    19,BRONZOR,40,42
+    19,WOOPERT,40,42
+    19,MORELULL,40,42
+    19,SHROODLE,40,42
+    1,CAMERUPT,40,42
+    1,BRONZONG,40,42
+    1,DUSTOX,40,42
+    1,CLODSIRE,40,42
+    1,GRAFAIAI,40,42
+#-------------------------------
+[232] # Kaedara
+Land,10
+    19,MIENFOO,40,42
+    19,TAILLOW,40,42
+    19,POLIWHIRL,40,42
+    19,MORELULL,40,42
+    19,FOMANTIS,40,42
+    1,MIENSHAO,40,42
+    1,SWELLOW,40,42
+    1,DUSTOX,40,42
+    1,POLITOED,40,42
+    1,LURANTIS,40,42
+#-------------------------------
+[233] # Auburn Highlands
+Land,10
+    19,STANTLER,50,52
+    19,FOMANTIS,50,52
+    19,SWADLOON,50,52
+    19,AIPOM,50,52
+    19,TANDEMAUS,50,52
+    1,WYRDEER,54,56
+    1,LURANTIS,54,56
+    1,LEAVANNY,54,56
+    1,AMBIPOM,54,56
+    1,MAUSHOLD,54,56
+#-------------------------------
+[292] # Auburn River
+Land,10
+    19,HOOTHOOTT,40,42
+    19,TAILLOW,40,42
+    19,POLIWAG,40,42
+    19,MORELULL,40,42
+    19,KRICKETOT,40,42
+    1,NOCTOWLT,40,42
+    1,SWELLOW,40,42
+    1,POLIWRATH,40,42
+    1,SHIINOTIC,40,42
+    1,KRICKETUNE,40,42
+#-------------------------------
+[299] # Auburn Mines
+Land,10
+    19,SANDSHREW,50,52
+    19,HOUNDOUR,50,52
+    20,ORTHWORM,50,52
+    19,NOIBAT,50,52
+    19,CLEFAIRY,50,52
+    1,SANDSLASH,54,56
+    1,HOUNDOOM,54,56
+    1,NOIVERN,54,56
+    1,CLEFABLE,54,56
+#-------------------------------
+[234] # Route Fourteen
+Land,10
+    19,SNEASEL,50,52
+    19,PILOSWINE,50,52
+    19,ROCKRUFF,50,52
+    19,CUBCHOO,50,52
+    19,SANDSHREWA,50,52
+    1,SANDSLASHA,54,56
+    1,LYCANROC,54,56
+    1,MAMOSWINE,54,56
+    1,WEAVILE,54,56
+    1,BEARTIC,54,56
+#-------------------------------
+[236] # Route Fifteen
+Land,10
+    19,SNEASEL,50,52
+    19,PILOSWINE,50,52
+    19,BERGMITE,50,52
+    19,CUBCHOO,50,52
+    19,SANDSHREWA,50,52
+    1,SANDSLASHA,54,56
+    1,AVALUGG,54,56
+    1,MAMOSWINE,54,56
+    1,WEAVILE,54,56
+    1,BEARTIC,54,56
+#-------------------------------
+[237] # Auburn Cove
+Land,10
+    19,FOMANTIS,40,42
+    19,TAILLOW,40,42
+    19,POLIWAG,40,42
+    19,MORELULL,40,42
+    19,KRICKETOT,40,42
+    1,LURANTIS,40,42
+    1,SWELLOW,40,42
+    1,POLIWRATH,40,42
+    1,SHIINOTIC,40,42
+    1,KRICKETUNE,40,42
+#-------------------------------
+[248] # Route Sixteen
+Land,10
+    19,POLIWHIRL,50,52
+    19,CORPHISH,50,52
+    19,SLOWPOKE,50,52
+    19,WINGULL,50,52
+    1,POLITOED,54,56
+    1,CRAWDAUNT,54,56
+    1,SLOWBRO,54,56
+    1,PELIPPER,54,56
+#-------------------------------
+[249] # Mt. Fueterre
+Land,10
+    20,BEAUTIFLY,50,52
+    20,HERACROSS,50,52
+    20,LEDIAN,50,52
+    20,LOMBRE,50,52
+    20,CRAMORANT,50,52
+#-------------------------------
+[304] # Auburn Station
+Land,10
+    20,HOOTHOOTT,40,42
+    20,TAILLOW,40,42
+    20,SILCOON,40,42
+    20,MORELULL,40,42
+    20,KRICKETOT,40,42
+#-------------------------------
+
+
