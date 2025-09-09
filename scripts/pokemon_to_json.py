@@ -87,6 +87,44 @@ def parse_effort_points(v: str) -> Dict[str,int]:
     keys = ["hp","atk","def","spe","spa","spd"]
     return { keys[i]: ints[i] for i in range(6) }
 
+STAT_NAME_ALIASES = {
+    # ss2 style keys
+    "hp": "hp",
+    "attack": "atk",
+    "atk": "atk",
+    "defense": "def",
+    "def": "def",
+    "special_attack": "spa",
+    "spattack": "spa",
+    "spatk": "spa",
+    "special_defense": "spd",
+    "spdefense": "spd",
+    "spdef": "spd",
+    "speed": "spe",
+    "spe": "spe",
+}
+
+def parse_evs_list(entries: List[str]) -> Dict[str,int]:
+    """Parse repeated EVs lines like "EVs = SPECIAL_ATTACK,2" (ss2 style)."""
+    out = {"hp":0,"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+    for ev in entries or []:
+        parts = [p.strip() for p in (ev or "").split(",")]
+        if len(parts) < 2:
+            continue
+        stat_raw = parts[0].lower().replace(" ", "_")
+        stat = STAT_NAME_ALIASES.get(stat_raw, None)
+        if not stat:
+            # try common shorthands like "sp. atk"
+            stat2 = re.sub(r"[^a-z]", "", stat_raw)
+            stat = STAT_NAME_ALIASES.get(stat2)
+        try:
+            val = int(parts[1])
+        except:
+            val = 0
+        if stat:
+            out[stat] = out.get(stat, 0) + val
+    return out
+
 def parse_moves_csv(v: str) -> List[Dict[str,Any]]:
     # "1,TACKLE,5,HOWL,10,EMBER" -> [{level:1, move:"TACKLE"}, ...]
     toks = [t.strip() for t in (v or "").split(",") if t.strip()]
@@ -183,7 +221,12 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
             if cur is None: continue
             k, v = parse_kv_line(line)
             if not k: continue
-            cur_raw[k] = v
+            kl = k.strip().lower()
+            # Aggregate repeated EV lines (ss2 style)
+            if kl in ("evs","ev","evyield"):
+                cur_raw.setdefault("__EVS__", []).append(v)
+            else:
+                cur_raw[k] = v
 
     if cur:
         # ── finalize last section ────────────────────────────────────────────
@@ -204,13 +247,22 @@ def parse_pokemon_pbs(path: Path, stat_order: List[str]) -> Dict[str, Dict[str, 
         name = r.get("Name") or title_from_internal(internal)
 
         # normalized
+        # effort points: EffortPoints CSV or repeated EVs lines
+        ep: Dict[str,int]
+        if r.get("EffortPoints"):
+            ep = parse_effort_points(r.get("EffortPoints",""))
+        elif r.get("__EVS__"):
+            ep = parse_evs_list(r.get("__EVS__") or [])
+        else:
+            ep = {"hp":0,"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+
         mon: Dict[str, Any] = {
             "id": slug(internal),
             "internalName": internal,
             "name": name,
             "types": e.get("types", []),
             "stats": parse_base_stats(r.get("BaseStats",""), stat_order),
-            "effortPoints": parse_effort_points(r.get("EffortPoints","")),
+            "effortPoints": ep,
             "genderRate": r.get("GenderRate"),
             "growthRate": r.get("GrowthRate"),
             "baseEXP": int(r.get("BaseEXP","0")) if str(r.get("BaseEXP","0")).isdigit() else r.get("BaseEXP"),
@@ -284,7 +336,11 @@ def parse_forms_pbs(path: Path, stat_order: List[str]) -> List[Dict[str, Any]]:
             if cur is None: continue
             k, v = parse_kv_line(line)
             if not k: continue
-            cur_raw[k] = v
+            kl = k.strip().lower()
+            if kl in ("evs","ev","evyield"):
+                cur_raw.setdefault("__EVS__", []).append(v)
+            else:
+                cur_raw[k] = v
 
     if cur:
         cur["raw"] = cur_raw
@@ -316,7 +372,10 @@ def parse_forms_pbs(path: Path, stat_order: List[str]) -> List[Dict[str, Any]]:
 
         # stats & EP
         if "BaseStats" in r: ov["stats"] = parse_base_stats(r["BaseStats"], stat_order)
-        if "EffortPoints" in r: ov["effortPoints"] = parse_effort_points(r["EffortPoints"])
+        if "EffortPoints" in r:
+            ov["effortPoints"] = parse_effort_points(r["EffortPoints"])
+        elif "__EVS__" in r:
+            ov["effortPoints"] = parse_evs_list(r.get("__EVS__") or [])
 
         # abilities
         if "Abilities" in r: ov["abilities"] = dedupe_keep_order(to_list(r["Abilities"]))
