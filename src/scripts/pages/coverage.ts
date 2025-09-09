@@ -23,12 +23,16 @@ function headerHTML(): string {
   const types = allPlayableTypes();
   const icon = (t: string) => {
     const on = selected.includes(t);
-    const img = typeIconTag(t).replace('class="type-icon"', 'class="type-icon" style="width:28px;height:28px"');
-    return `<button class="type-toggle" data-type="${t}" title="${t}"
-              style="appearance:none;border:0;background:transparent;padding:4px;border-radius:8px;cursor:pointer;filter:${on ? 'none' : 'grayscale(100%) opacity(.5)'}">${img}</button>`;
+    const label = (typeData?.[t]?.name || t);
+    const img = typeIconTag(t).replace('class="type-icon"', 'class="type-icon" style="width:56px;height:56px"');
+    return `<button class="type-toggle" data-type="${t}" title="${label}"
+              style="appearance:none;border:0;background:transparent;padding:6px 8px;border-radius:10px;cursor:pointer;filter:${on ? 'none' : 'grayscale(100%) opacity(.5)'};display:flex;flex-direction:column;align-items:center;gap:4px;">
+              ${img}
+              <span style="font-size:11px; opacity:.8; line-height:1;">${label}</span>
+            </button>`;
   };
   return `<section class="panel" style="padding:8px 10px;">
-    <div class="type-toggle-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;">${types.map(icon).join('')}</div>
+    <div class="type-toggle-row" style="display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,max-content);gap:10px 12px;align-items:start;justify-content:center;">${types.map(icon).join('')}</div>
   </section>`;
 }
 
