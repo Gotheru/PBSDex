@@ -4,7 +4,7 @@
 
 import re, json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Iterable
 
 CANON = {
     "Name":"name", "Type":"type", "Category":"category",
@@ -126,22 +126,45 @@ def parse_moves_txt(path: Path) -> Dict[str, Any]:
 
     return out
 
+
+def parse_move_files(paths: Iterable[Path]) -> Dict[str, Any]:
+    """Parse multiple moves.txt-style files and merge them into one mapping."""
+    data: Dict[str, Any] = {}
+    for p in paths:
+        data.update(parse_moves_txt(p))
+    return data
+
 def main():
     import argparse
-    ap = argparse.ArgumentParser(description="Convert PBS moves.txt to moves.json (full fidelity).")
-    ap.add_argument("src", help="Path to moves.txt")
+    ap = argparse.ArgumentParser(
+        description="Convert PBS moves text files to a single moves.json (full fidelity).",
+    )
+    ap.add_argument(
+        "src",
+        help="Path to a moves.txt file or a directory containing any *moves*.txt files",
+    )
     ap.add_argument("dest", help="Path to output moves.json")
     args = ap.parse_args()
 
-    src = Path(args.src)
+    src_path = Path(args.src)
     dest = Path(args.dest)
-    if not src.exists():
-        raise SystemExit(f"Input not found: {src}")
 
-    data = parse_moves_txt(src)
+    if src_path.is_dir():
+        candidates = sorted(src_path.glob("*moves*.txt"))
+    elif src_path.is_file():
+        candidates = sorted(src_path.parent.glob("*moves*.txt"))
+        if src_path not in candidates:
+            candidates.insert(0, src_path)
+    else:
+        raise SystemExit(f"Input not found: {src_path}")
+
+    if not candidates:
+        raise SystemExit(f"No moves*.txt files found in {src_path}")
+
+    data = parse_move_files(candidates)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Wrote {len(data)} moves to {dest}")
+    print(f"Wrote {len(data)} moves from {len(candidates)} file(s) to {dest}")
 
 if __name__ == "__main__":
     main()
