@@ -1,7 +1,7 @@
 import { _asMon, ABIL, abilityName, moveDisplayName, movesIndex, typeData, getGameId } from "../core/data";
 import { Mon } from "../core/types";
 import { typeCandidates } from "./typing";
-import { escapeAttr } from "./fmt";
+import { escapeAttr, slugify } from "./fmt";
 
 const BASE = (import.meta as any).env?.BASE_URL || '/';
 // Resolve under Vite's base (works in dev and on GH Pages)
@@ -119,25 +119,25 @@ export const monHref = (m: Mon) => `#/mon/${encodeURIComponent(m.id)}`;
 
 export function frontCandidates(p: Mon): string[] {
     const base = `${BASE}images/${getGameId()}/front/`;
-    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    const names = monNameCandidates(p);
     return buildCandidates(base, names);
 }
 
 export function backCandidates(p: Mon): string[] {
     const base = `${BASE}images/${getGameId()}/back/`;
-    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    const names = monNameCandidates(p);
     return buildCandidates(base, names);
 }
 
 export function frontShinyCandidates(p: Mon): string[] {
     const base = `${BASE}images/${getGameId()}/front shiny/`;
-    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    const names = monNameCandidates(p);
     return buildCandidates(base, names);
 }
 
 export function backShinyCandidates(p: Mon): string[] {
     const base = `${BASE}images/${getGameId()}/back shiny/`;
-    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    const names = monNameCandidates(p);
     return buildCandidates(base, names);
 }
 
@@ -149,7 +149,7 @@ export function iconUrl(internalName: string): string {
 
 export function iconCandidates(p: Mon): string[] {
     const base = `${BASE}images/${getGameId()}/icons/`;
-    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    const names = monNameCandidates(p);
     return buildCandidates(base, names);
 }
 
@@ -189,4 +189,47 @@ function buildCandidates(base: string, names: string[], exts: string[] = ["png",
         if (!seen.has(u)) { urls.push(u); seen.add(u); }
     }
     return urls;
+}
+
+// Build best-effort filename candidates for species and their forms
+function monNameCandidates(p: Mon): string[] {
+    const names: string[] = [];
+    const push = (s?: string) => { if (s && !names.includes(s)) names.push(s); };
+
+    // Primary identifiers
+    push(p.internalName);
+    push(p.internalName?.toUpperCase?.());
+    push(p.internalName?.toLowerCase?.());
+    push(p.id);
+    push(p.id?.toUpperCase?.());
+
+    // Forms: try common filename patterns
+    const isForm = (p as any).isForm;
+    const baseInternal = (p as any).baseInternal as string | undefined;
+    const formIndex = (p as any).formIndex as number | undefined;
+    const formName = (p as any).formName as string | undefined;
+
+    if (isForm && baseInternal) {
+        if (typeof formIndex === 'number') {
+            // Numeric index style: BASE_1
+            push(`${baseInternal}_${formIndex}`);
+            push(`${baseInternal.toUpperCase()}_${formIndex}`);
+            push(`${baseInternal.toLowerCase()}_${formIndex}`);
+        }
+        if (formName) {
+            const sf = slugify(formName);
+            if (sf) {
+                // Named form style: BASE_slug
+                push(`${baseInternal}_${sf}`);
+                push(`${baseInternal.toUpperCase()}_${sf.toUpperCase()}`);
+                push(`${baseInternal.toLowerCase()}_${sf.toLowerCase()}`);
+            }
+        }
+        // Some packs re-use base sprite; try the base as a last resort
+        push(baseInternal);
+        push(baseInternal.toUpperCase());
+        push(baseInternal.toLowerCase());
+    }
+
+    return names;
 }

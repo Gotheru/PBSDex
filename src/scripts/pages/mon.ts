@@ -162,6 +162,8 @@ export function buildDetailHTML(p: Mon) {
 
     const evolutions = buildEvolutionHTML(p);
 
+    const extraDetails = buildExtraDetailsHTML(p);
+
     const locations = buildMonLocationsHTML(p);
 
     const learnset = buildLevelUpTable(p);
@@ -176,7 +178,7 @@ export function buildDetailHTML(p: Mon) {
     const eggSection = buildMovesTableNoLv("Egg Moves", eggMovesFromRoot(p));
 
     // Return everything
-    return detailTop + evolutions + locations + learnset + tutorTMSection + eggSection;
+    return detailTop + evolutions + extraDetails + locations + learnset + tutorTMSection + eggSection;
 
 }
 
@@ -312,3 +314,70 @@ export function buildEvolutionHTML(current: Mon): string {
       </div>
     </section>`;
 }
+
+export function buildExtraDetailsHTML(p: Mon): string {
+  const extra: any = (p as any).extra || {};
+  const ev = extra.effortPoints || {};
+  const eggGroups = Array.isArray(extra.compatibility) ? extra.compatibility : [];
+  const weight = extra.weight;
+
+  const anyEv = [ev.hp, ev.atk, ev.def, ev.spa, ev.spd, ev.spe].some(v => typeof v === 'number' && v > 0);
+  const anyEgg = eggGroups.length > 0;
+  const anyWeight = weight != null && weight !== '';
+  if (!anyEv && !anyEgg && !anyWeight) return '';
+
+  const evRow = [
+    Number(ev.hp ?? 0),
+    Number(ev.atk ?? 0),
+    Number(ev.def ?? 0),
+    Number(ev.spa ?? 0),
+    Number(ev.spd ?? 0),
+    Number(ev.spe ?? 0),
+  ];
+
+  const eggText = eggGroups.map((g: any) => escapeHtml(String(g))).join(', ');
+  let weightText = '-';
+  if (anyWeight) {
+    const wNum = typeof weight === 'number' ? weight : Number(weight);
+    if (Number.isFinite(wNum)) {
+      const lbs = Math.round(wNum * 2.20462262185 * 10) / 10;
+      weightText = `${lbs.toFixed(1)} lbs`;
+    } else {
+      weightText = `${escapeHtml(String(weight))}`;
+    }
+  }
+
+  const left = anyEv ? `
+    <section class="panel">
+      <table class="moves-table ev-yield-table">
+        <thead>
+          <tr>
+            <th>HP</th><th>Atk</th><th>Def</th><th>SpAtk</th><th>SpDef</th><th>Spe</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            ${evRow.map(v => `<td class="mv-num">${v}</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  ` : '';
+
+  const right = (anyEgg || anyWeight) ? `
+    <section class="panel" style="display:flex; align-items:center;">
+      <div style="display:grid; gap:8px; padding:8px 16px 12px 16px; width:100%;">
+        <div><b>Egg Groups:</b> ${eggText || '-'}</div>
+        <div><b>Weight:</b> ${weightText}</div>
+      </div>
+    </section>
+  ` : '';
+
+  // Two-column responsive layout; collapses on narrow screens
+  return `
+    <div class="extra-split" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+      ${left}${right}
+    </div>
+  `;
+}
+

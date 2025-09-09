@@ -40,9 +40,16 @@ export type Mon = {
     prevo?: string;
     isForm?: boolean;
     baseInternal?: string;
+    // Optional form metadata (present for form entries in JSON)
+    formIndex?: number;
+    formName?: string;
 
     // add dex number
     num: number;
+
+    // Additional details preserved from pokemon.json that
+    // are not otherwise mapped/displayed explicitly.
+    extra?: Record<string, any>;
 };
 
 export type AbilityInfo = { name: string; description?: string };
@@ -93,3 +100,5 @@ export type IntlPack = {
 };
 
 export type EvoEdge = { from: string; to: string; method?: string; param?: string };
+
+

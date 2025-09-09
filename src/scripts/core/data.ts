@@ -157,6 +157,19 @@ async function loadPokemon() {
 
         const types = Array.isArray(e.types) ? e.types.filter(Boolean)
             : toArray(e.types);
+        // Collect unused fields from the original entry for display later
+        const consumedKeys = new Set<string>([
+            'id','internalName','InternalName','name','Name','types','stats','abilities','Abilities','hiddenAbility','HiddenAbility',
+            'moves','tutorMoves','eggMoves','machineMoves','evolutions','isForm','baseInternal','num','summary','pokedex','Pokedex','kind','prevo','raw'
+        ]);
+        const extra: Record<string, any> = {};
+        for (const [k, v] of Object.entries(e || {})) {
+            if (consumedKeys.has(k)) continue;
+            if (v == null) continue;
+            if (Array.isArray(v) && v.length === 0) continue;
+            if (typeof v === 'object' && Object.keys(v).length === 0) continue;
+            (extra as any)[k] = v;
+        }
 
         return {
             id,
@@ -178,6 +191,7 @@ async function loadPokemon() {
             baseInternal: e.baseInternal,
 
             num: e.num,
+            extra,
         };
     });
 
@@ -290,3 +304,5 @@ export function pokemonLearnersOf(moveId: string): Mon[] {
     }
     return out.sort((a,b)=> a.name.localeCompare(b.name));
 }
+
+
