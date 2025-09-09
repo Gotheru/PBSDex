@@ -82,8 +82,9 @@ export function attackingBuckets(atkType: string) {
     return { noEffect, notVery, superEff };
 }
 
+const BASE = (import.meta as any).env?.BASE_URL || '/';
 export function typeCandidates(tRaw: string): string[] {
-    const base = new URL("./images/types/", document.baseURI).toString();
+    const base = `${BASE}images/types/`;
     const name = String(tRaw || "");
     const cap = name ? name[0] + name.slice(1).toLowerCase() : name;
     const variants = [name, name.toUpperCase(), name.toLowerCase(), cap];

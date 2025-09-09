@@ -1,6 +1,6 @@
 import { moveDisplayName, movesIndex, pokemonLearnersOf } from "../core/data";
 import { tFlag, tTarget } from "../core/intl";
-import { navBack } from "../core/router";
+import { navBack, setHeaderBack } from "../core/router";
 import { buildTableHTML, applyDexTableSizing } from "../ui/table";
 import { categoryIconTag, moveLinkHTML, typeLinkIconTag } from "../util/assets";
 import { wireIconFallbacks } from "../util/dom";
@@ -126,8 +126,7 @@ export function renderMoveDetail(moveId: string) {
     const count = document.querySelector<HTMLElement>("#count");
     if (!grid || !count) return;
 
-    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+    setHeaderBack();
 
 
     grid.innerHTML = buildMoveDetailHTML(moveId);

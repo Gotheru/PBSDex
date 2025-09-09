@@ -2,11 +2,11 @@ import { ALL_POKEMON, movesIndex, ABIL, typeData, LOCS } from "../core/data";
 import { navigateToMon } from "../core/router";
 import { SuggestItem } from "../core/types";
 import { miniIconHTML, moveSmallIcon, typeIconTag } from "../util/assets";
+import { escapeHtml } from "../util/fmt";
 
 export let SEARCH_INDEX: SuggestItem[] = [];
 
-export const escapeHTML = (s:string) =>
-    String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+export const escapeHTML = escapeHtml;
 
 export function highlight(label:string, q:string){
     if (!q) return escapeHTML(label);

@@ -1,5 +1,5 @@
 import { normKey, num, slugify, toArray } from "../util/fmt";
-import { AbilityMap, EncounterLocation, IntlPack, Item, Mon, Stats, SuggestItem, TypeInfo } from "./types";
+import { AbilityMap, EncounterLocation, IntlPack, Item, Mon, MoveIndex, Stats, SuggestItem, TypeInfo } from "./types";
 
 // GLOBAL VARIBALES
 export let ALL_POKEMON: Mon[] = [];
@@ -7,7 +7,7 @@ export let byInternal = new Map<string, Mon>()
 export let LOCS: Record<string, EncounterLocation> = {};
 export let typeData: Record<string, TypeInfo> = {};
 export let ITEMS: Record<string, Item> = {};
-export let movesIndex: Record<string, any> = {};
+export let movesIndex: MoveIndex = {};
 export let ABIL: AbilityMap = {};
 export let INTL: IntlPack = {};
 export let INTL_IDX = {
@@ -21,10 +21,10 @@ export let MON_BY_ID: Record<string, Mon> = {};
 
 
 let GAME_ID = 'main';
-let DATA_ROOT = `./data/${GAME_ID}`;
+const BASE = (import.meta as any).env?.BASE_URL || '/';
+const dataPath = (file: string) => `${BASE}data/${GAME_ID}/${file}`;
 export function setGameId(id: string){
     GAME_ID = id;
-    DATA_ROOT = `./data/${id}`;
 }
 export function getGameId(){
     return GAME_ID;
@@ -78,7 +78,7 @@ export function getAbilityInfo(id: string): { name?: string; description?: strin
 
 // LOADERS
 async function loadEncounters(): Promise<void> {
-    const url = new URL(`${DATA_ROOT}/encounters.json`, document.baseURI).toString();
+    const url = dataPath('encounters.json');
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) return;
     const data = await res.json();
@@ -93,7 +93,7 @@ async function loadEncounters(): Promise<void> {
 }
 
 async function loadItems(): Promise<void> {
-    const url = new URL(`${DATA_ROOT}/items.json`, document.baseURI).toString();
+    const url = dataPath('items.json');
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) return;
     const data = await res.json();
@@ -111,28 +111,28 @@ async function loadItems(): Promise<void> {
 }
 
 async function loadMoves() {
-    const dataUrl = new URL(`${DATA_ROOT}/moves.json`, document.baseURI).toString();
+    const dataUrl = dataPath('moves.json');
     const res = await fetch(dataUrl, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
     movesIndex = await res.json();
 }
 
 async function loadAbilities() {
-    const url = new URL(`${DATA_ROOT}/abilities.json`, document.baseURI).toString();
+    const url = dataPath('abilities.json');
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     ABIL = await res.json();
 }
 
 async function loadTypes() {
-    const dataUrl = new URL(`${DATA_ROOT}/types.json`, document.baseURI).toString();
+    const dataUrl = dataPath('types.json');
     const res = await fetch(dataUrl, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
     typeData = await res.json();
 }
 
 async function loadPokemon() {
-    const dataUrl = new URL(`${DATA_ROOT}/pokemon.json`, document.baseURI).toString();
+    const dataUrl = dataPath('pokemon.json');
     const res = await fetch(dataUrl, { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${dataUrl}`);
     const raw = await res.json();
@@ -212,7 +212,7 @@ function attachPrevos(pokemon: Mon[]) {
 }
 
 async function loadIntl() {
-    const url = new URL(`${DATA_ROOT}/intl.json`, document.baseURI).toString();
+    const url = `${BASE}data/${GAME_ID}/intl.json`;
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) return;
     INTL = await res.json();

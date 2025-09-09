@@ -1,5 +1,5 @@
 import { typeData, ALL_POKEMON, movesIndex } from "../core/data";
-import { navBack } from "../core/router";
+import { navBack, setHeaderBack } from "../core/router";
 import { buildTableHTML, applyDexTableSizing } from "../ui/table";
 import { typeIconTag, typeLinkIconTag } from "../util/assets";
 import { wireIconFallbacks } from "../util/dom";
@@ -23,8 +23,7 @@ export function renderTypeDetail(typeId: string) {
     // Moves of this type
     const moveIds = Object.keys(movesIndex || {}).filter(id => movesIndex[id]?.type === typeId);
 
-    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+    setHeaderBack();
 
 
     grid.innerHTML = `

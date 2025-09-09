@@ -1,6 +1,6 @@
 import { eggMovesFromRoot, MON_BY_INTERNAL, moveDisplayName, moveInfo } from "../core/data";
 import { EvoEdge, Mon, Stats } from "../core/types";
-import { escapeHTML } from "../ui/suggest";
+import { escapeHtml } from "../util/fmt";
 import { abilityLinkHTML, categoryIconTag, frontCandidates, miniIcon64, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML } from "../util/assets";
 import { formatEvoMethod } from "../util/fmt";
 import { buildMonLocationsHTML } from "./location";
@@ -136,7 +136,7 @@ export function buildDetailHTML(p: Mon) {
       ${flavor ? `
       <div class="info-tile flavor">
         <div class="info-label"><center>Dex entry No. ${dexNo}</center></div>
-        <div class="flavor-text">“${escapeHTML(flavor)}”</div>
+        <div class="flavor-text">“${escapeHtml(flavor)}”</div>
       </div>
     ` : ""}
 
@@ -269,11 +269,11 @@ export function buildEvolutionHTML(current: Mon): string {
       const method = idx > 0 ? (edgeLabel.get(intName) || "") : "";
       return `
         <div class="evo-item">
-          <a class="evo-link" href="${link}" title="${escapeHTML(m.name)}">
+          <a class="evo-link" href="${link}" title="${escapeHtml(m.name)}">
             ${miniIcon64(m.internalName)}
-            <div class="evo-name">${escapeHTML(m.name)}</div>
+            <div class="evo-name">${escapeHtml(m.name)}</div>
           </a>
-          ${method ? `<div class="evo-method">${escapeHTML(method)}</div>` : ``}
+          ${method ? `<div class="evo-method">${escapeHtml(method)}</div>` : ``}
         </div>`;
     }).join(`<div class="evo-arrow" aria-hidden="true">${ARROW_SVG}</div>`);
 
@@ -295,11 +295,11 @@ export function buildEvolutionHTML(current: Mon): string {
       const method = idx > 0 ? (edgeLabel.get(intName) || "") : "";
       return `
         <div class="evo-item">
-          <a class="evo-link" href="${link}" title="${escapeHTML(m.name)}">
+          <a class="evo-link" href="${link}" title="${escapeHtml(m.name)}">
             ${miniIcon64(m.internalName)}
-            <div class="evo-name">${escapeHTML(m.name)}</div>
+            <div class="evo-name">${escapeHtml(m.name)}</div>
           </a>
-          ${method ? `<div class="evo-method">${escapeHTML(method)}</div>` : ``}
+          ${method ? `<div class="evo-method">${escapeHtml(method)}</div>` : ``}
         </div>`;
     }).join("");
     return `<div class="evo-stage">${items}</div>`;

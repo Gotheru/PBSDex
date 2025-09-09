@@ -1,9 +1,11 @@
 import { _asMon, ABIL, abilityName, moveDisplayName, movesIndex, typeData, getGameId } from "../core/data";
 import { Mon } from "../core/types";
 import { typeCandidates } from "./typing";
+import { escapeAttr } from "./fmt";
 
-// Resolves relative to the current page, so it works in dev ("/") and GH Pages ("/PBSDex/")
-export const assetUrl = (rel: string) => new URL(rel.replace(/^\//, ""), document.baseURI).toString();
+const BASE = (import.meta as any).env?.BASE_URL || '/';
+// Resolve under Vite's base (works in dev and on GH Pages)
+export const assetUrl = (rel: string) => `${BASE}${rel.replace(/^\/+/, '')}`;
 
 // Mini sprite (left 64px of a 128×64 sheet) — suggestions dropdown
 export function miniIconHTML(monOrName: Mon | string) {
@@ -35,9 +37,9 @@ export function miniIconHTML(monOrName: Mon | string) {
 }
 
 
+// Convenience wrapper identical to miniIconHTML (link + icon)
 export function miniIconLinkHTML(monOrName: Mon | string) {
-    const p = _asMon(monOrName);
-    const urls = iconCandidates(p);
+    return miniIconHTML(monOrName);
 }
 
 export function smallTypeIcons(types: string[]){
@@ -66,7 +68,7 @@ export function iconRow(list: string[]) {
 
 // ── Category icon helpers (PHYSICAL / SPECIAL / STATUS) ────────────────
 export function categoryIconCandidates(catRaw: string | undefined): string[] {
-    const base = new URL("./images/categories/", document.baseURI).toString();
+    const base = `${BASE}images/categories/`;
     const c = String(catRaw || "");
     const up = c.toUpperCase();
     const cap = c ? c[0].toUpperCase() + c.slice(1).toLowerCase() : c;
@@ -88,14 +90,7 @@ export function categoryIconTag(catRaw: string | undefined) {
                alt="${alt}" title="${alt}" loading="lazy" decoding="async">`;
 }
 
-export function escapeAttr(s: string) {
-    return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\s+/g, " "); // collapse newlines/extra spaces
-}
+// escapeAttr moved to util/fmt
 
 export function abilityLinkHTML(id?: string | null, opts?: { hidden?: boolean }) {
     if (!id) return "";
@@ -123,48 +118,21 @@ export const locHref = (id: string) => `#/loc/${encodeURIComponent(id)}`;
 export const monHref = (m: Mon) => `#/mon/${encodeURIComponent(m.id)}`;
 
 export function frontCandidates(p: Mon): string[] {
-    const base = new URL(`./images/${getGameId()}/front/`, document.baseURI).toString();
-    const names = [
-        p.internalName,                  // e.g. BEEDRILLT
-        p.internalName.toLowerCase(),    // beedrillt
-        p.id,                            // beedrillt
-        p.id.toUpperCase(),              // BEEDRILLT
-    ];
-    const exts = ["png", "PNG"];
-    const seen = new Set<string>();
-    const urls: string[] = [];
-    for (const n of names) for (const ext of exts) {
-        const u = base + encodeURIComponent(n) + "." + ext;
-        if (!seen.has(u)) { urls.push(u); seen.add(u); }
-    }
-    return urls;
+    const base = `${BASE}images/${getGameId()}/front/`;
+    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    return buildCandidates(base, names);
 }
 
 export function iconUrl(internalName: string): string {
     // public/images/icons/<InternalName>.png
     // document.baseURI keeps it working at /PBSDex/ in prod and / in dev
-    return new URL(`./images/${getGameId()}/icons/${encodeURIComponent(internalName)}.png`, document.baseURI).toString();
+    return `${BASE}images/${getGameId()}/icons/${encodeURIComponent(internalName)}.png`;
 }
 
 export function iconCandidates(p: Mon): string[] {
-    const base = new URL(`./images/${getGameId()}/icons/`, document.baseURI).toString();
-    const names = [
-        p.internalName,                  // e.g. BEEDRILLT
-        p.internalName.toLowerCase(),    // beedrillt
-        p.id,                            // beedrillt (slug)
-        p.id.toUpperCase(),              // BEEDRILLT
-    ];
-    const exts = ["png", "PNG"];       // try both cases
-    const seen = new Set<string>();
-    const urls: string[] = [];
-
-    for (const n of names) {
-        for (const ext of exts) {
-            const u = base + encodeURIComponent(n) + "." + ext;
-            if (!seen.has(u)) { urls.push(u); seen.add(u); }
-        }
-    }
-    return urls;
+    const base = `${BASE}images/${getGameId()}/icons/`;
+    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    return buildCandidates(base, names);
 }
 
 export function typeLinkIconTag(t: string) {
@@ -192,4 +160,15 @@ export function miniIcon64(monOrName: Mon | string) {
                  if(i<a.length){el.setAttribute('data-si',i); el.src=a[i];}
                  else{el.style.display='none';}
                })(this)">`;
+}
+
+// Shared URL candidate builder
+function buildCandidates(base: string, names: string[], exts: string[] = ["png", "PNG"]): string[] {
+    const seen = new Set<string>();
+    const urls: string[] = [];
+    for (const n of names) for (const ext of exts) {
+        const u = base + encodeURIComponent(n) + "." + ext;
+        if (!seen.has(u)) { urls.push(u); seen.add(u); }
+    }
+    return urls;
 }

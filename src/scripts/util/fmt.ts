@@ -16,6 +16,20 @@ export const num = (x: unknown, d = 0): number => {
 export const slugify = (s: string) =>
     (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+// HTML escaping helpers shared across modules
+export function escapeHtml(s: string): string {
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+export function escapeAttr(s: string): string {
+    return escapeHtml(s).replace(/\s+/g, " ");
+}
+
 export function summarizeEncounterType(rows: EncounterRow[]): {
     list: { intName: string; chancePct: number; minLvl: number; maxLvl: number }[];
     total: number;

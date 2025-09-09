@@ -95,3 +95,11 @@ export function setupNavStack(){
         scrollToTopNow();    // always jump to top on route change
     }, { passive: true });
 }
+
+// Small helper to standardize the header back button across pages
+export function setHeaderBack() {
+    const count = document.querySelector<HTMLElement>("#count");
+    if (!count) return;
+    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
+    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+}

@@ -24,19 +24,6 @@ export function wireFallbacks(root: HTMLElement, selector: string) {
 }
 
 export function wireIconFallbacks(root: HTMLElement) {
-    root.querySelectorAll<HTMLImageElement>("img.dex-icon").forEach(img => {
-        const srcs = (img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
-        if (srcs.length <= 1) return;
-
-        img.addEventListener("error", () => {
-            let i = Number(img.dataset.idx || "0");
-            i += 1;
-            if (i < srcs.length) {
-                img.dataset.idx = String(i);
-                img.src = srcs[i];
-            } else {
-                img.style.visibility = "hidden"; // no valid sources; hide the broken icon
-            }
-        });
-    });
+    // Thin wrapper for consistency
+    wireFallbacks(root, "img.dex-icon");
 }

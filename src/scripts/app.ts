@@ -12,7 +12,16 @@ export async function start() {
     const game = params.get('game') || 'main';
     setGameId(game);
 
-    await loadAll()
+    try {
+        await loadAll();
+    } catch (err: any) {
+        console.error('Failed to load game data', err);
+        const grid = document.querySelector<HTMLElement>("#grid");
+        const count = document.querySelector<HTMLElement>("#count");
+        if (count) count.textContent = '';
+        if (grid) grid.innerHTML = `<div style="padding:16px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;">Failed to load data. ${String(err?.message || err || '')}</div>`;
+        return;
+    }
 
     bindAbilityTooltips()
     bindTypeTooltips()

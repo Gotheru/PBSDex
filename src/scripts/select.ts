@@ -1,8 +1,9 @@
 interface GameInfo { id: string; name: string }
 
+const BASE = (import.meta as any).env?.BASE_URL || '/';
 async function init() {
   try {
-    const res = await fetch('./data/games.json', { cache: 'no-cache' });
+    const res = await fetch(`${BASE}data/games.json`, { cache: 'no-cache' });
     if (!res.ok) return;
     const games: GameInfo[] = await res.json();
     const list = document.querySelector<HTMLUListElement>('#games');

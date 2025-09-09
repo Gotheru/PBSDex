@@ -1,5 +1,20 @@
 export type Stats = { hp: number; atk: number; def: number; spa: number; spd: number; spe: number };
 export type Move = { level: number; move: string };
+// Full move info loaded from data
+export type MoveInfo = {
+    id?: string;
+    name?: string;
+    type?: string;
+    category?: string; // "Physical" | "Special" | "Status"
+    power?: number;
+    accuracy?: number;
+    pp?: number;
+    priority?: number;
+    target?: string;
+    flags?: string[];
+    description?: string;
+};
+export type MoveIndex = Record<string, MoveInfo>;
 export type Evolution = { to: string; method: string; param: string };
 export type Mon = {
     id: string;

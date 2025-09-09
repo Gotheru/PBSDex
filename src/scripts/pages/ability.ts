@@ -1,9 +1,9 @@
 import { getAbilityInfo, resolveAbilityKey } from "../core/data";
 import { Mon } from "../core/types";
-import { escapeHTML } from "../ui/suggest";
+import { escapeHtml } from "../util/fmt";
 import { applyDexTableSizing, buildTableHTML } from "../ui/table";
 import { scrollToTopNow, wireIconFallbacks } from "../util/dom";
-import { navBack } from "../core/router"
+import { navBack, setHeaderBack } from "../core/router"
 
 export function renderAbilityDetail(pokemon: Mon[], id: string) {
     const grid  = document.querySelector<HTMLElement>("#grid");
@@ -14,9 +14,8 @@ export function renderAbilityDetail(pokemon: Mon[], id: string) {
     const info  = getAbilityInfo(aKey);
     const title = info?.name || id;
 
-    // Header Back button (same control style used elsewhere, wired to navBack)
-    count.innerHTML = `<button class="header-back" aria-label="Back">← Back</button>`;
-    count.querySelector<HTMLButtonElement>(".header-back")?.addEventListener("click", navBack);
+    // Standard header back button
+    setHeaderBack();
 
     // Filter mons that have this ability (regular or hidden)
     const list = pokemon
@@ -26,10 +25,10 @@ export function renderAbilityDetail(pokemon: Mon[], id: string) {
     // Page
     grid.innerHTML = `
     <article class="detail">
-      <h1 class="detail-name">${escapeHTML(title)}</h1>
+      <h1 class="detail-name">${escapeHtml(title)}</h1>
 
       <section class="detail-block">
-        ${escapeHTML(info?.description || "—")}
+        ${escapeHtml(info?.description || "—")}
       </section>
 
       <section class="detail-block">
