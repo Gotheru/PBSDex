@@ -1,3 +1,4 @@
 [
-  { "id": "main", "name": "Main Game" }
+  { "id": "vanguard", "name": "Project Vanguard" },
+  { "id": "decay", "name": "Pokemon Decay" }
 ]

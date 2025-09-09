@@ -1,0 +1,87 @@
+#-------------------------------
+[DEPRESSURIZE]
+Name = Depressurize
+Type = FLYING
+Category = Special
+Power = 120
+Accuracy = 100
+TotalPP = 15
+Target = NearOther
+FunctionCode = RecoilThirdOfDamageDealt
+Flags = CanProtect,CanMirrorMove
+Description = The user releases its air to damage the foe. It also damages the user by a fairly large amount.
+#------------------------------- 
+[EMP]
+Name = E.M.P.
+Type = ELECTRIC
+Category = Special
+Power = 250
+Accuracy = 100
+TotalPP = 5
+Target = AllNearOthers
+FunctionCode = ParalyzeTargetUserFaintsExplosive
+Flags = CanProtect,CanMirrorMove
+EffectChance = 100
+Description = The user explodes to inflict damage on those around it. The user faints. Always paralyzes.
+#-------------------------------
+[PLASMABLAST]
+Name = Plasmablast
+Type = DRAGON
+Category = Special
+Power = 95
+Accuracy = 90
+TotalPP = 10
+Target = NearOther
+FunctionCode = ParalyzeBurnOrFreezeTarget
+Flags = CanProtect,CanMirrorMove
+EffectChance = 30
+Description = The user strikes with a blast of plasma. May also paralyze, burn, or freeze the target.
+#-------------------------------
+[QUICKSTING]
+Name = Quicksting
+Type = POISON
+Category = Physical
+Power = 30
+Accuracy = 100
+TotalPP = 20
+Target = NearOther
+Priority = 1
+FunctionCode = PoisonTarget
+Flags = CanProtect,CanMirrorMove
+EffectChance = 20
+Description = The user poisons the target. It is sure to strike first.
+#-------------------------------
+[CRYSTALLIZE]
+Name = Crystallize
+Type = ROCK
+Category = Physical
+Power = 70
+Accuracy = 100
+TotalPP = 20
+Target = NearOther
+FunctionCode = SuperEffectiveAgainstRock
+Flags = CanProtect,CanMirrorMove
+Description = The user hurls crystal shards at the target. Is super-effective on rock type Pokémon.
+#-------------------------------
+[SOULTRAP]
+Name = Soul Trap
+Type = GHOST
+Category = Status
+Accuracy = 100
+TotalPP = 10
+Target = NearOther
+FunctionCode = DisableAndStealLastMoveUsedByTarget
+Flags = CanProtect
+Description = Steals and disables the last move used by an enemy.
+#-------------------------------
+[PERFORMANCE]
+Name = Performance
+Type = NORMAL
+Category = Physical
+Power = 50
+Accuracy = 100
+TotalPP = 20
+Target = NearOther
+FunctionCode = DoublePowerAndChangeTypeIfUserHasSecondaryType
+Flags = CanProtect,CanMirrorMove
+Description = Does more damage and changes type if the user has a secondary type.
