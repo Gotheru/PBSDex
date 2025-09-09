@@ -2,7 +2,7 @@ import { renderAbilityDetail } from "../pages/ability";
 import { renderLocationDetail } from "../pages/location";
 import { renderMoveDetail } from "../pages/move";
 import { renderTypeDetail } from "../pages/type";
-import { renderDetail, renderTable } from "../ui/table";
+import { renderDetail, renderTable, renderListByKind } from "../ui/table";
 import { scrollToTopNow } from "../util/dom";
 import { Mon } from "./types";
 
@@ -60,7 +60,11 @@ export function renderCurrent() {
         case 'move': return renderMoveDetail(route.id!);
         case 'type': return renderTypeDetail(route.id!);
         case 'loc':  return renderLocationDetail(route.id!);  // ← NEW
-        default:     return renderTable(pokemon);
+        default: {
+            const sel = document.querySelector<HTMLSelectElement>('#data-kind');
+            const kind = (sel?.value || 'mon') as any;
+            return renderListByKind(pokemon, kind);
+        }
     }
 }
 

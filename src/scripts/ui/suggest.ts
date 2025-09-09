@@ -94,7 +94,10 @@ export function ensureSuggestBox(){
         box = document.createElement('div');
         box.id = 'search-suggest';
         box.innerHTML = `<ul id="search-suggest-list" class="suggest-list" role="listbox"></ul>`;
-        document.querySelector('.controls')?.appendChild(box);
+        // Ensure it floats above all other UI and aligns to viewport coords from getBoundingClientRect()
+        (box as HTMLDivElement).style.position = 'fixed';
+        (box as HTMLDivElement).style.zIndex = '2147483647';
+        document.body.appendChild(box);
     }
     return box as HTMLDivElement;
 }

@@ -96,7 +96,7 @@ export function abilityLinkHTML(id?: string | null, opts?: { hidden?: boolean })
     if (!id) return "";
     const name = abilityName(id);
     const tip  = ABIL[id]?.description ? ` data-tip="${escapeAttr(ABIL[id].description!)}"` : "";
-    const a = `<a href="#/ability/${encodeURIComponent(id)}" class="abil-link"${tip}>${name}</a>`;
+    const a = `<a href="#/ability/${encodeURIComponent(id)}" class="abil-link move-link"${tip}>${name}</a>`;
     return opts?.hidden ? `<em>${a}</em>` : a;
 }
 

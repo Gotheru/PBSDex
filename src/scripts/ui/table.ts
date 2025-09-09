@@ -1,8 +1,8 @@
-import { abilityName } from "../core/data";
+import { ABIL, LOCS, MON_BY_INTERNAL, abilityName, movesIndex } from "../core/data";
 import { navBack } from "../core/router";
 import { Mon } from "../core/types";
 import { bst, buildDetailHTML } from "../pages/mon";
-import { abilityLinkHTML, iconCandidates, typingIconsLinkedHTML } from "../util/assets";
+import { abilityLinkHTML, categoryIconTag, iconCandidates, locHref, miniIconHTML, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML } from "../util/assets";
 import { wireFallbacks } from "../util/dom";
 import { escapeHTML } from "./suggest";
 
@@ -67,16 +67,17 @@ export function measureWidths(pokemon: Mon[]) {
 }
 
 export type SortKey =
-    | "name" | "typing"
+    | "num" | "name" | "typing"
     | "ability1" | "ability2" | "hidden"
     | "hp" | "atk" | "def" | "spa" | "spd" | "spe" | "bst";
 
 export type SortDir = "asc" | "desc";
 
-export let sortState: { key: SortKey; dir: SortDir } = { key: "name", dir: "asc" };
+export let sortState: { key: SortKey; dir: SortDir } = { key: "num", dir: "asc" };
 
 export function getFieldForSort(p: Mon, key: SortKey): string | number {
     switch (key) {
+        case "num":  return (p as any).num ?? 0;
         case "name":   return p.name || "";
         case "typing": return (p.types?.[0] || "") + " " + (p.types?.[1] || "");
         case "ability1": return abilityName(p.abilities?.[0]);
@@ -255,4 +256,170 @@ export function renderDetail(pokemon: Mon[], id: string) {
     wireFallbacks(grid, "img.type-icon");
     wireFallbacks(grid, "img.cat-icon");
 
+}
+
+// =========================
+// Indexed list renderers
+// =========================
+
+type MoveSortKey = "name" | "category" | "power" | "accuracy" | "pp";
+let moveSort: { key: MoveSortKey; dir: SortDir } = { key: "name", dir: "asc" };
+
+function cmpMove(aId: string, bId: string, key: MoveSortKey, dir: SortDir): number {
+  const a = (movesIndex as any)[aId] || {};
+  const b = (movesIndex as any)[bId] || {};
+  let av: any = a?.name || aId, bv: any = b?.name || bId;
+  if (key === "category") { av = a?.category || ""; bv = b?.category || ""; }
+  else if (key === "power") { av = a?.power ?? -1; bv = b?.power ?? -1; }
+  else if (key === "accuracy") { av = a?.accuracy ?? -1; bv = b?.accuracy ?? -1; }
+  else if (key === "pp") { av = a?.pp ?? -1; bv = b?.pp ?? -1; }
+  let n = 0;
+  if (typeof av === "number" && typeof bv === "number") n = av - bv; else n = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+  return dir === "asc" ? n : -n;
+}
+
+export function renderMovesIndex() {
+  const grid = document.querySelector<HTMLElement>("#grid");
+  const count = document.querySelector<HTMLElement>("#count");
+  if (!grid || !count) return;
+
+  const ids = Object.keys(movesIndex || {});
+  ids.sort((a,b) => cmpMove(a,b, moveSort.key, moveSort.dir));
+  count.textContent = `${ids.length} moves`;
+
+  const arrow = (key: MoveSortKey) => moveSort.key === key ? `<span class=\"sort-arrow\">${moveSort.dir === "asc" ? "▲" : "▼"}</span>` : "";
+  const th = (label: string, key?: MoveSortKey, cls?: string) =>
+    key ? `<th data-sort=\"${key}\" tabindex=\"0\" class=\"sortable ${cls || ''}\">${label} ${arrow(key)}</th>`
+        : `<th class=\"${cls || ''}\">${label}</th>`;
+
+  grid.innerHTML = `
+  <table class="moves-table no-lv">
+    <thead>
+      <tr>
+        ${th("Move", "name", "mv-name")}
+        ${th("Type", undefined, "mv-type")}
+        ${th("Cat", "category", "mv-cat")}
+        ${th("Power", "power", "mv-num")}
+        ${th("Acc", "accuracy", "mv-num")}
+        ${th("PP", "pp", "mv-num")}
+        ${th("Description", undefined, "mv-desc")}
+      </tr>
+    </thead>
+    <tbody>
+      ${ids.map(id => {
+        const mv = (movesIndex as any)[id] || {};
+        const cat = mv?.category || "";
+        const power = (cat === "Status" || mv?.power == null || mv?.power === 1) ? "—" : String(mv?.power ?? "—");
+        const acc   = (mv?.accuracy == null || mv?.accuracy === 0) ? "—" : String(mv?.accuracy);
+        const pp    = (mv?.pp ?? "—");
+        const typeIcon = mv?.type ? typeLinkIconTag(mv.type) : "";
+        const catIcon  = cat ? categoryIconTag(cat) : "";
+        return `
+          <tr>
+            <td class="mv-name">${moveLinkHTML(id)}</td>
+            <td class="mv-type">${typeIcon}</td>
+            <td class="mv-cat">${catIcon}</td>
+            <td class="mv-num">${power}</td>
+            <td class="mv-num">${acc}</td>
+            <td class="mv-num">${pp}</td>
+            <td class="mv-desc">${mv?.description || ""}</td>
+          </tr>`;
+      }).join("")}
+    </tbody>
+  </table>`;
+
+  const table = grid.querySelector<HTMLTableElement>(".moves-table");
+  table?.querySelectorAll<HTMLTableCellElement>('th.sortable').forEach(th => {
+    const key = th.getAttribute('data-sort') as MoveSortKey | null;
+    if (!key) return;
+    const activate = () => {
+      if (moveSort.key === key) moveSort.dir = moveSort.dir === 'asc' ? 'desc' : 'asc';
+      else { moveSort.key = key; moveSort.dir = 'asc'; }
+      renderMovesIndex();
+    };
+    th.addEventListener('click', activate);
+    th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }});
+  });
+}
+
+type AbilSortKey = "name";
+let abilSort: { key: AbilSortKey; dir: SortDir } = { key: "name", dir: "asc" };
+
+export function renderAbilitiesIndex() {
+  const grid = document.querySelector<HTMLElement>("#grid");
+  const count = document.querySelector<HTMLElement>("#count");
+  if (!grid || !count) return;
+
+  const entries = Object.entries(ABIL || {});
+  entries.sort((a,b) => abilSort.dir === 'asc' ? (a[1]?.name || a[0]).localeCompare(b[1]?.name || b[0]) : (b[1]?.name || b[0]).localeCompare(a[1]?.name || a[0]));
+  count.textContent = `${entries.length} abilities`;
+
+  const arrow = `<span class=\"sort-arrow\">${abilSort.dir === "asc" ? "▲" : "▼"}</span>`;
+  grid.innerHTML = `
+  <table class="moves-table no-lv">
+    <thead>
+      <tr>
+        <th data-sort="name" tabindex="0" class="sortable mv-name" style="width:20%;">Ability ${arrow}</th>
+        <th class="mv-desc">Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${entries.map(([id, a]) => `
+        <tr>
+          <td class="mv-name">${abilityLinkHTML(id)}</td>
+          <td class="mv-desc">${a?.description || ''}</td>
+        </tr>`).join("")}
+    </tbody>
+  </table>`;
+
+  const th = grid.querySelector<HTMLTableCellElement>('th.sortable');
+  th?.addEventListener('click', () => { abilSort.dir = abilSort.dir === 'asc' ? 'desc' : 'asc'; renderAbilitiesIndex(); });
+  th?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abilSort.dir = abilSort.dir === 'asc' ? 'desc' : 'asc'; renderAbilitiesIndex(); }});
+}
+
+export function renderLocationsIndex() {
+  const grid = document.querySelector<HTMLElement>("#grid");
+  const count = document.querySelector<HTMLElement>("#count");
+  if (!grid || !count) return;
+
+  const entries = Object.entries(LOCS || {});
+  entries.sort((a,b) => (a[1]?.name || a[0]).localeCompare(b[1]?.name || b[0]));
+  count.textContent = `${entries.length} locations`;
+
+  grid.innerHTML = `
+  <table class="moves-table no-lv">
+    <thead>
+      <tr>
+        <th>Location</th>
+        <th>Pokémon</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${entries.map(([id, loc]) => {
+        const seen = new Set<string>();
+        for (const rows of Object.values(loc?.encounters || {})) {
+          for (const r of (rows as any[])) {
+            const intName = String(r?.[1] || '').trim();
+            if (intName) seen.add(intName);
+          }
+        }
+        const mons = Array.from(seen);
+        mons.sort((a,b) => (MON_BY_INTERNAL[a]?.num ?? 0) - (MON_BY_INTERNAL[b]?.num ?? 0));
+        const icons = `<span class=\"icon-list\" style=\"display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;\">${mons.map(x => miniIconHTML(x)).join("")}</span>`;
+        const name = loc?.name || `#${id}`;
+        return `
+          <tr>
+            <td class="loc"><a class="plain" href="${locHref(id)}">${escapeHTML(name)}</a></td>
+            <td class="icons">${icons}</td>
+          </tr>`;
+      }).join("")}
+    </tbody>
+  </table>`;
+}
+
+export function renderListByKind(pokemon: Mon[], kind: 'mon'|'move'|'ability'|'loc') {
+  if (kind === 'move') return renderMovesIndex();
+  if (kind === 'ability') return renderAbilitiesIndex();
+  if (kind === 'loc') return renderLocationsIndex();
+  return renderTable(pokemon);
 }
