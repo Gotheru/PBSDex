@@ -19,10 +19,17 @@ export let EVO_TPL: Record<string, string>
 export let MON_BY_INTERNAL: Record<string, Mon> = {};
 export let MON_BY_ID: Record<string, Mon> = {};
 
-let DATA_ROOT = './data/main';
+
+let GAME_ID = 'main';
+let DATA_ROOT = `./data/${GAME_ID}`;
 export function setGameId(id: string){
+    GAME_ID = id;
     DATA_ROOT = `./data/${id}`;
 }
+export function getGameId(){
+    return GAME_ID;
+}
+
 
 // NAME GETTERS
 export const locationName = (locId?: string): string =>
