@@ -1,0 +1,354 @@
+{
+  "NORMAL": {
+    "name": "Normal",
+    "internalId": "NORMAL",
+    "weaknesses": [
+      "FIGHTING"
+    ],
+    "resistances": [],
+    "immunities": [
+      "GHOST"
+    ],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 0
+  },
+  "FIGHTING": {
+    "name": "Fighting",
+    "internalId": "FIGHTING",
+    "weaknesses": [
+      "FLYING",
+      "PSYCHIC",
+      "FAIRY"
+    ],
+    "resistances": [
+      "ROCK",
+      "BUG",
+      "DARK"
+    ],
+    "immunities": [],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 1
+  },
+  "FLYING": {
+    "name": "Flying",
+    "internalId": "FLYING",
+    "weaknesses": [
+      "ROCK",
+      "ELECTRIC",
+      "ICE"
+    ],
+    "resistances": [
+      "FIGHTING",
+      "BUG",
+      "GRASS"
+    ],
+    "immunities": [
+      "GROUND"
+    ],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 2
+  },
+  "POISON": {
+    "name": "Poison",
+    "internalId": "POISON",
+    "weaknesses": [
+      "GROUND",
+      "PSYCHIC"
+    ],
+    "resistances": [
+      "FIGHTING",
+      "POISON",
+      "BUG",
+      "GRASS",
+      "FAIRY"
+    ],
+    "immunities": [],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 3
+  },
+  "GROUND": {
+    "name": "Ground",
+    "internalId": "GROUND",
+    "weaknesses": [
+      "WATER",
+      "GRASS",
+      "ICE"
+    ],
+    "resistances": [
+      "POISON",
+      "ROCK"
+    ],
+    "immunities": [
+      "ELECTRIC"
+    ],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 4
+  },
+  "ROCK": {
+    "name": "Rock",
+    "internalId": "ROCK",
+    "weaknesses": [
+      "FIGHTING",
+      "GROUND",
+      "STEEL",
+      "WATER",
+      "GRASS"
+    ],
+    "resistances": [
+      "NORMAL",
+      "FLYING",
+      "POISON",
+      "FIRE"
+    ],
+    "immunities": [],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 5
+  },
+  "BUG": {
+    "name": "Bug",
+    "internalId": "BUG",
+    "weaknesses": [
+      "FLYING",
+      "ROCK",
+      "FIRE"
+    ],
+    "resistances": [
+      "FIGHTING",
+      "GROUND",
+      "GRASS"
+    ],
+    "immunities": [],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 6
+  },
+  "GHOST": {
+    "name": "Ghost",
+    "internalId": "GHOST",
+    "weaknesses": [
+      "GHOST",
+      "DARK"
+    ],
+    "resistances": [
+      "POISON",
+      "BUG"
+    ],
+    "immunities": [
+      "NORMAL",
+      "FIGHTING"
+    ],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 7
+  },
+  "STEEL": {
+    "name": "Steel",
+    "internalId": "STEEL",
+    "weaknesses": [
+      "FIGHTING",
+      "GROUND",
+      "FIRE"
+    ],
+    "resistances": [
+      "NORMAL",
+      "FLYING",
+      "ROCK",
+      "BUG",
+      "STEEL",
+      "GRASS",
+      "PSYCHIC",
+      "ICE",
+      "DRAGON",
+      "FAIRY"
+    ],
+    "immunities": [
+      "POISON"
+    ],
+    "isSpecialType": false,
+    "isPseudoType": false,
+    "index": 8
+  },
+  "QMARKS": {
+    "name": "???",
+    "internalId": "QMARKS",
+    "weaknesses": [],
+    "resistances": [],
+    "immunities": [],
+    "isSpecialType": false,
+    "isPseudoType": true,
+    "index": 9
+  },
+  "FIRE": {
+    "name": "Fire",
+    "internalId": "FIRE",
+    "weaknesses": [
+      "GROUND",
+      "ROCK",
+      "WATER"
+    ],
+    "resistances": [
+      "BUG",
+      "STEEL",
+      "FIRE",
+      "GRASS",
+      "ICE",
+      "FAIRY"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 10
+  },
+  "WATER": {
+    "name": "Water",
+    "internalId": "WATER",
+    "weaknesses": [
+      "GRASS",
+      "ELECTRIC"
+    ],
+    "resistances": [
+      "STEEL",
+      "FIRE",
+      "WATER",
+      "ICE"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 11
+  },
+  "GRASS": {
+    "name": "Grass",
+    "internalId": "GRASS",
+    "weaknesses": [
+      "FLYING",
+      "POISON",
+      "BUG",
+      "FIRE",
+      "ICE"
+    ],
+    "resistances": [
+      "GROUND",
+      "WATER",
+      "GRASS",
+      "ELECTRIC"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 12
+  },
+  "ELECTRIC": {
+    "name": "Electric",
+    "internalId": "ELECTRIC",
+    "weaknesses": [
+      "GROUND"
+    ],
+    "resistances": [
+      "FLYING",
+      "STEEL",
+      "ELECTRIC"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 13
+  },
+  "PSYCHIC": {
+    "name": "Psychic",
+    "internalId": "PSYCHIC",
+    "weaknesses": [
+      "BUG",
+      "GHOST",
+      "DARK"
+    ],
+    "resistances": [
+      "FIGHTING",
+      "PSYCHIC"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 14
+  },
+  "ICE": {
+    "name": "Ice",
+    "internalId": "ICE",
+    "weaknesses": [
+      "FIGHTING",
+      "ROCK",
+      "STEEL",
+      "FIRE"
+    ],
+    "resistances": [
+      "ICE"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 15
+  },
+  "DRAGON": {
+    "name": "Dragon",
+    "internalId": "DRAGON",
+    "weaknesses": [
+      "ICE",
+      "DRAGON",
+      "FAIRY"
+    ],
+    "resistances": [
+      "FIRE",
+      "WATER",
+      "GRASS",
+      "ELECTRIC"
+    ],
+    "immunities": [],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 16
+  },
+  "DARK": {
+    "name": "Dark",
+    "internalId": "DARK",
+    "weaknesses": [
+      "FIGHTING",
+      "BUG",
+      "FAIRY"
+    ],
+    "resistances": [
+      "GHOST",
+      "DARK"
+    ],
+    "immunities": [
+      "PSYCHIC"
+    ],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 17
+  },
+  "FAIRY": {
+    "name": "Fairy",
+    "internalId": "FAIRY",
+    "weaknesses": [
+      "POISON",
+      "STEEL"
+    ],
+    "resistances": [
+      "FIGHTING",
+      "BUG",
+      "DARK"
+    ],
+    "immunities": [
+      "DRAGON"
+    ],
+    "isSpecialType": true,
+    "isPseudoType": false,
+    "index": 18
+  }
+}

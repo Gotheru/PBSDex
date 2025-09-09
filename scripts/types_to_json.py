@@ -35,14 +35,19 @@ def parse_types_txt(text: str) -> dict:
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        m = re.match(r"\[(\d+)\]\s*$", line)
+        m = re.match(r"\[([^\]]+)\]\s*$", line)
         if m:
             # flush previous block
             if current:
                 current["_index"] = idx if idx is not None else len(entries)
                 entries.append(current)
             current = {}
-            idx = int(m.group(1))
+            header = m.group(1)
+            if header.isdigit():
+                idx = int(header)
+            else:
+                idx = None
+                current["InternalName"] = header
             continue
         if "=" in line:
             k, v = line.split("=", 1)
