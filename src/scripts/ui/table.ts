@@ -2,7 +2,7 @@ import { ABIL, LOCS, MON_BY_INTERNAL, abilityName, movesIndex } from "../core/da
 import { navBack } from "../core/router";
 import { Mon } from "../core/types";
 import { bst, buildDetailHTML } from "../pages/mon";
-import { abilityLinkHTML, categoryIconTag, iconCandidates, locHref, miniIconHTML, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML } from "../util/assets";
+import { abilityLinkHTML, categoryIconTag, iconCandidates, locHref, miniIconHTML, moveLinkHTML, typeLinkIconTag, typingIconsLinkedHTML, frontCandidates, backCandidates, frontShinyCandidates, backShinyCandidates } from "../util/assets";
 import { renderCoverage } from "../pages/coverage";
 import { wireFallbacks } from "../util/dom";
 import { escapeHTML } from "./suggest";
@@ -256,6 +256,43 @@ export function renderDetail(pokemon: Mon[], id: string) {
     wireFallbacks(grid, "img.mon-front");
     wireFallbacks(grid, "img.type-icon");
     wireFallbacks(grid, "img.cat-icon");
+
+    // Click-to-cycle main sprite: front -> back -> front shiny -> back shiny -> ...
+    const img = grid.querySelector<HTMLImageElement>('img.mon-front');
+    if (img) {
+      const variants: { name: string; urls: string[] }[] = [
+        { name: 'front', urls: frontCandidates(mon) },
+        { name: 'back', urls: backCandidates(mon) },
+        { name: 'front shiny', urls: frontShinyCandidates(mon) },
+        { name: 'back shiny', urls: backShinyCandidates(mon) },
+      ];
+
+      let vi = 0;
+      const apply = (idx: number) => {
+        vi = ((idx % variants.length) + variants.length) % variants.length;
+        const cur = variants[vi];
+        const all = cur.urls.join('|');
+        img.setAttribute('data-srcs', all);
+        img.setAttribute('data-idx', '0');
+        img.setAttribute('data-variant', String(vi));
+        img.src = cur.urls[0];
+        img.title = `${mon.name} — ${cur.name}`;
+        img.alt = `${mon.name} (${cur.name})`;
+      };
+
+      // Ensure initial attributes
+      img.style.cursor = 'pointer';
+      img.setAttribute('role', 'button');
+      img.setAttribute('aria-label', `${mon.name} sprite (click to cycle)`);
+      img.addEventListener('click', () => apply(vi + 1));
+      img.addEventListener('keydown', (e: any) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apply(vi + 1); }
+      });
+      img.tabIndex = 0;
+
+      // Seed the title to hint interaction
+      try { img.title = `${mon.name} — front (click to cycle)`; } catch {}
+    }
 
 }
 

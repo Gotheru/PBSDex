@@ -8,9 +8,8 @@ export function scrollToTopNow() {
 
 export function wireFallbacks(root: HTMLElement, selector: string) {
     root.querySelectorAll<HTMLImageElement>(selector).forEach(img => {
-        const srcs = (img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
-        if (srcs.length <= 1) return;
         img.addEventListener("error", () => {
+            const srcs = (img.getAttribute("data-srcs") || "").split("|").filter(Boolean);
             let i = Number(img.dataset.idx || "0");
             i += 1;
             if (i < srcs.length) {

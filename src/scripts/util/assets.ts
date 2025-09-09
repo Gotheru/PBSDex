@@ -123,6 +123,24 @@ export function frontCandidates(p: Mon): string[] {
     return buildCandidates(base, names);
 }
 
+export function backCandidates(p: Mon): string[] {
+    const base = `${BASE}images/${getGameId()}/back/`;
+    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    return buildCandidates(base, names);
+}
+
+export function frontShinyCandidates(p: Mon): string[] {
+    const base = `${BASE}images/${getGameId()}/front shiny/`;
+    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    return buildCandidates(base, names);
+}
+
+export function backShinyCandidates(p: Mon): string[] {
+    const base = `${BASE}images/${getGameId()}/back shiny/`;
+    const names = [p.internalName, p.internalName.toLowerCase(), p.id, p.id.toUpperCase()];
+    return buildCandidates(base, names);
+}
+
 export function iconUrl(internalName: string): string {
     // public/images/icons/<InternalName>.png
     // document.baseURI keeps it working at /PBSDex/ in prod and / in dev
