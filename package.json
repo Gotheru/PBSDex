@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "generate:data": "for d in public/data/*/; do python3 scripts/pokemon_to_json.py \"$d/pokemon.txt\" \"$d/pokemon.json\" --forms \"$d/pokemon_forms.txt\" --exclude-cosmetics && python3 scripts/abilities_to_json.py \"$d/abilities.txt\" \"$d/abilities.json\" && python3 scripts/types_to_json.py \"$d/types.txt\" \"$d/types.json\" && python3 scripts/moves_to_json.py \"$d/moves.txt\" \"$d/moves.json\" && python3 scripts/items_to_json.py \"$d/items.txt\" \"$d/items.json\" && python3 scripts/encounters_to_json.py \"$d/encounters.txt\" \"$d/encounters.json\"; done",
+    "generate:data": "for d in public/data/*/; do python3 scripts/pokemon_to_json.py \"$d/pokemon.txt\" \"$d/pokemon.json\" --forms \"$d/pokemon_forms.txt\" --exclude-cosmetics && python3 scripts/abilities_to_json.py \"$d/abilities.txt\" \"$d/abilities.json\" && python3 scripts/types_to_json.py \"$d/types.txt\" \"$d/types.json\" && python3 scripts/moves_to_json.py \"$d\" \"$d/moves.json\" && python3 scripts/items_to_json.py \"$d/items.txt\" \"$d/items.json\" && python3 scripts/encounters_to_json.py \"$d/encounters.txt\" \"$d/encounters.json\"; done",
     "build:pages": "npm run generate:data && vite build"
   },
   "devDependencies": {
