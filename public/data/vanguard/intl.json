@@ -60,6 +60,7 @@
     "TradeItem": "Trade while holding {item}",
     "Location": "Level up at {location}",
     "NightHoldItem": "Level up at night while holding {item}",
+    "KirliaItem": "Level 32 while holding {item}",
     "DEFAULT": "{method} {param}"
   }
 }
